@@ -36,11 +36,11 @@ Do not use this workflow for non-`.bike` formats or when the user only wants pro
 
 Prefer this executable path:
 
-- `/Users/robin/.codex/bin/bike-tool`
+- `~/.codex/bin/bike-tool` (or `$CODEX_HOME/bin/bike-tool`)
 
 If unavailable, build/install from:
 
-- `/Users/robin/src/bike-tool`
+- this repository root
 - install command: `scripts/install.sh`
 
 ## Core Rules
@@ -83,20 +83,20 @@ If no open task exists, report that explicitly.
 ## Commands
 
 ```bash
-/Users/robin/.codex/bin/bike-tool validate "/absolute/path/file.bike"
-/Users/robin/.codex/bin/bike-tool list "/absolute/path/file.bike"
-/Users/robin/.codex/bin/bike-tool to-json "/absolute/path/file.bike"
-/Users/robin/.codex/bin/bike-tool to-json "/absolute/path/file.bike" --rich-text
-/Users/robin/.codex/bin/bike-tool add "/absolute/path/file.bike" --text "New row" --type task
-/Users/robin/.codex/bin/bike-tool add "/absolute/path/file.bike" --text "Child row" --type note --parent-id abc123
-/Users/robin/.codex/bin/bike-tool done "/absolute/path/file.bike" --id abc123
-/Users/robin/.codex/bin/bike-tool undone "/absolute/path/file.bike" --id abc123
-/Users/robin/.codex/bin/bike-tool delete "/absolute/path/file.bike" --id abc123
-/Users/robin/.codex/bin/bike-tool done "/absolute/path/file.bike" --id abc123 --write-mode atomic
-/Users/robin/.codex/bin/bike-tool done "/absolute/path/file.bike" --id abc123 --backup-mode inline
-/Users/robin/.codex/bin/bike-tool backup list "/absolute/path/file.bike"
-/Users/robin/.codex/bin/bike-tool backup prune "/absolute/path/file.bike" --keep 10 --days 30
-/Users/robin/.codex/bin/bike-tool backup restore "/absolute/path/file.bike" --id "<backup-id>"
+bike-tool validate "/absolute/path/file.bike"
+bike-tool list "/absolute/path/file.bike"
+bike-tool to-json "/absolute/path/file.bike"
+bike-tool to-json "/absolute/path/file.bike" --rich-text
+bike-tool add "/absolute/path/file.bike" --text "New row" --type task
+bike-tool add "/absolute/path/file.bike" --text "Child row" --type note --parent-id abc123
+bike-tool done "/absolute/path/file.bike" --id abc123
+bike-tool undone "/absolute/path/file.bike" --id abc123
+bike-tool delete "/absolute/path/file.bike" --id abc123
+bike-tool done "/absolute/path/file.bike" --id abc123 --write-mode atomic
+bike-tool done "/absolute/path/file.bike" --id abc123 --backup-mode inline
+bike-tool backup list "/absolute/path/file.bike"
+bike-tool backup prune "/absolute/path/file.bike" --keep 10 --days 30
+bike-tool backup restore "/absolute/path/file.bike" --id "<backup-id>"
 ```
 
 ## Notes

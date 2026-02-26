@@ -13,14 +13,14 @@ Use this project when requests involve:
 
 ## First steps for Codex
 
-1. Read `/Users/robin/src/bike-tool/README.md`.
-2. If needed, read `/Users/robin/src/bike-tool/docs/DEVELOPMENT.md`.
-3. Prefer running commands from `/Users/robin/src/bike-tool`.
+1. Read `README.md`.
+2. If needed, read `docs/DEVELOPMENT.md`.
+3. Prefer running commands from the repository root.
 
 ## Core commands
 
 ```bash
-cd /Users/robin/src/bike-tool
+cd /path/to/bike-tool
 swift build
 swift test
 scripts/install.sh
@@ -28,24 +28,24 @@ scripts/install.sh
 
 Installed binary path:
 
-- `/Users/robin/.codex/bin/bike-tool`
+- `~/.codex/bin/bike-tool`
 - or `$CODEX_HOME/bin/bike-tool` when `CODEX_HOME` is set
 
 ## Companion skill
 
 This repo includes a Codex skill at:
 
-- `/Users/robin/src/bike-tool/skills/bike-outline/`
+- `skills/bike-outline/`
 
 Install/update it with:
 
 ```bash
-mkdir -p /Users/robin/.codex/skills/bike-outline/agents
-cp /Users/robin/src/bike-tool/skills/bike-outline/SKILL.md /Users/robin/.codex/skills/bike-outline/SKILL.md
-cp /Users/robin/src/bike-tool/skills/bike-outline/agents/openai.yaml /Users/robin/.codex/skills/bike-outline/agents/openai.yaml
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills/bike-outline/agents"
+cp skills/bike-outline/SKILL.md "${CODEX_HOME:-$HOME/.codex}/skills/bike-outline/SKILL.md"
+cp skills/bike-outline/agents/openai.yaml "${CODEX_HOME:-$HOME/.codex}/skills/bike-outline/agents/openai.yaml"
 ```
 
-If `/Users/robin/.codex/bin/bike-tool` is missing, run `scripts/install.sh` before using the skill.
+If `~/.codex/bin/bike-tool` (or `$CODEX_HOME/bin/bike-tool`) is missing, run `scripts/install.sh` before using the skill.
 
 ## Safety constraints
 
