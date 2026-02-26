@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bike Outline"
+  short_description: "Work with Bike outlines via bike-tool"
+  default_prompt: "Use $bike-outline to inspect and safely edit this .bike file with bike-tool."

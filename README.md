@@ -33,6 +33,18 @@ Default install location:
 
 If `CODEX_HOME` is set, the installer uses `$CODEX_HOME/bin/bike-tool`.
 
+## Codex Skill
+
+This repo includes a companion skill at `skills/bike-outline/`.
+
+To install/update that skill in your local Codex skills directory:
+
+```bash
+mkdir -p /Users/robin/.codex/skills/bike-outline/agents
+cp /Users/robin/Desktop/bike-tool/skills/bike-outline/SKILL.md /Users/robin/.codex/skills/bike-outline/SKILL.md
+cp /Users/robin/Desktop/bike-tool/skills/bike-outline/agents/openai.yaml /Users/robin/.codex/skills/bike-outline/agents/openai.yaml
+```
+
 ## Usage
 
 ```bash
