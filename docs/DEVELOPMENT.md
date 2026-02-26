@@ -3,14 +3,14 @@
 ## Build
 
 ```bash
-cd /Users/robin/Desktop/bike-tool
+cd /Users/robin/src/bike-tool
 swift build
 ```
 
 ## Test
 
 ```bash
-cd /Users/robin/Desktop/bike-tool
+cd /Users/robin/src/bike-tool
 swift test
 ```
 
@@ -19,14 +19,14 @@ The test suite includes a regression fixture with complex rich text and custom a
 ## Local Debug Run
 
 ```bash
-cd /Users/robin/Desktop/bike-tool
+cd /Users/robin/src/bike-tool
 .build/debug/bike-tool help
 ```
 
 ## Release Install
 
 ```bash
-cd /Users/robin/Desktop/bike-tool
+cd /Users/robin/src/bike-tool
 scripts/install.sh
 ```
 

@@ -15,7 +15,7 @@ Prefer this executable path:
 
 If unavailable, build/install from:
 
-- `/Users/robin/Desktop/bike-tool`
+- `/Users/robin/src/bike-tool`
 - install command: `scripts/install.sh`
 
 ## Workflow

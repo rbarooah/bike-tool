@@ -23,7 +23,7 @@ A Swift CLI for reading and safely editing [Bike.app](https://www.hogbaysoftware
 From source:
 
 ```bash
-cd /Users/robin/Desktop/bike-tool
+cd /Users/robin/src/bike-tool
 scripts/install.sh
 ```
 
@@ -41,8 +41,8 @@ To install/update that skill in your local Codex skills directory:
 
 ```bash
 mkdir -p /Users/robin/.codex/skills/bike-outline/agents
-cp /Users/robin/Desktop/bike-tool/skills/bike-outline/SKILL.md /Users/robin/.codex/skills/bike-outline/SKILL.md
-cp /Users/robin/Desktop/bike-tool/skills/bike-outline/agents/openai.yaml /Users/robin/.codex/skills/bike-outline/agents/openai.yaml
+cp /Users/robin/src/bike-tool/skills/bike-outline/SKILL.md /Users/robin/.codex/skills/bike-outline/SKILL.md
+cp /Users/robin/src/bike-tool/skills/bike-outline/agents/openai.yaml /Users/robin/.codex/skills/bike-outline/agents/openai.yaml
 ```
 
 ## Usage
