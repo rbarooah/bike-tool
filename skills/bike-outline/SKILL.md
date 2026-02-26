@@ -76,7 +76,9 @@ If no open task exists, report that explicitly.
 2. Read structure (`list`) or machine-readable data (`to-json`) as needed.
 3. Make edits via CLI commands (`add`, `done`, `undone`).
 4. Re-validate after edits.
-5. Confirm the `.bak` backup file exists after write operations.
+5. Confirm backup creation:
+   - default: verify `bike-tool backup list "<file>"` includes a new managed backup
+   - if `--backup-mode inline` was requested: verify `<file>.bak` exists
 
 ## Commands
 
@@ -91,6 +93,10 @@ If no open task exists, report that explicitly.
 /Users/robin/.codex/bin/bike-tool undone "/absolute/path/file.bike" --id abc123
 /Users/robin/.codex/bin/bike-tool delete "/absolute/path/file.bike" --id abc123
 /Users/robin/.codex/bin/bike-tool done "/absolute/path/file.bike" --id abc123 --write-mode atomic
+/Users/robin/.codex/bin/bike-tool done "/absolute/path/file.bike" --id abc123 --backup-mode inline
+/Users/robin/.codex/bin/bike-tool backup list "/absolute/path/file.bike"
+/Users/robin/.codex/bin/bike-tool backup prune "/absolute/path/file.bike" --keep 10 --days 30
+/Users/robin/.codex/bin/bike-tool backup restore "/absolute/path/file.bike" --id "<backup-id>"
 ```
 
 ## Notes
@@ -99,3 +105,4 @@ If no open task exists, report that explicitly.
 - Use `--rich-text` when inline formatting inside `<p>` matters.
 - Some rows may have no `data-type`; treat them as generic `item` rows.
 - Write commands default to `--write-mode coordinated` and support `atomic`/`inplace` for troubleshooting.
+- Write commands default to `--backup-mode managed` (stored outside the source folder); use `--backup-mode inline` only when sidecar `.bak` is explicitly requested.

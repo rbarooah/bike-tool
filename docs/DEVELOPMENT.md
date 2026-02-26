@@ -35,6 +35,10 @@ Quick smoke checks:
 
 # Delete row
 .build/debug/bike-tool delete "/tmp/test.bike" --id someRowId
+
+# Backup tools
+.build/debug/bike-tool backup list "/tmp/test.bike"
+.build/debug/bike-tool backup prune "/tmp/test.bike" --keep 10 --days 30
 ```
 
 ## Release Install
@@ -49,3 +53,4 @@ scripts/install.sh
 - Keep `.bike` paths absolute in examples and automation prompts.
 - Preserve unknown row attributes and inline paragraph markup.
 - Add regression tests when introducing new write behavior.
+- Default backup mode is managed; use `--backup-mode inline` only when sidecar `.bak` files are explicitly desired.

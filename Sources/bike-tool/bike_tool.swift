@@ -11,6 +11,12 @@ enum WriteMode: String {
     case inplace
 }
 
+enum BackupMode: String {
+    case managed
+    case inline
+    case none
+}
+
 struct Row {
     let id: String
     let type: String?
@@ -56,6 +62,8 @@ struct BikeTool {
             try handleDone(args: Array(args.dropFirst()), markDone: false)
         case "delete":
             try handleDelete(args: Array(args.dropFirst()))
+        case "backup":
+            try handleBackup(args: Array(args.dropFirst()))
         default:
             throw CLIError(message: "Unknown command '\(command)'. Run 'bike-tool help'.")
         }
@@ -70,10 +78,13 @@ struct BikeTool {
           bike-tool validate <file.bike>
           bike-tool list <file.bike>
           bike-tool to-json <file.bike> [--rich-text]
-          bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace]
-          bike-tool done <file.bike> --id <id> [--write-mode coordinated|atomic|inplace]
-          bike-tool undone <file.bike> --id <id> [--write-mode coordinated|atomic|inplace]
-          bike-tool delete <file.bike> --id <id> [--write-mode coordinated|atomic|inplace]
+          bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool done <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool undone <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool delete <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool backup list <file.bike>
+          bike-tool backup prune [<file.bike>] [--keep <count>] [--days <count>]
+          bike-tool backup restore <file.bike> --id <backup-id> [--write-mode coordinated|atomic|inplace]
         """)
     }
 
@@ -115,13 +126,14 @@ struct BikeTool {
 
     static func handleAdd(args: [String]) throws {
         guard let file = args.first else {
-            throw CLIError(message: "Usage: bike-tool add <file.bike> --text \"<text>\" [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace]")
+            throw CLIError(message: "Usage: bike-tool add <file.bike> --text \"<text>\" [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
         }
         let flags = try parseFlags(Array(args.dropFirst()))
         guard let text = flags["text"] else {
             throw CLIError(message: "Missing required flag: --text")
         }
         let writeMode = try parseWriteMode(flags: flags)
+        let backupMode = try parseBackupMode(flags: flags)
         let parentID = flags["parent-id"]
         let type = flags["type"] ?? "task"
         guard ["task", "note", "heading"].contains(type) else {
@@ -130,27 +142,28 @@ struct BikeTool {
 
         let bike = try BikeDocument(path: file)
         let newID = try bike.addRow(text: text, type: type, parentID: parentID)
-        try bike.saveWithBackup(writeMode: writeMode)
+        try bike.saveWithBackup(writeMode: writeMode, backupMode: backupMode)
         print("Added row id=\(newID)")
     }
 
     static func handleDone(args: [String], markDone: Bool) throws {
         guard let file = args.first else {
             let cmd = markDone ? "done" : "undone"
-            throw CLIError(message: "Usage: bike-tool \(cmd) <file.bike> --id <id>")
+            throw CLIError(message: "Usage: bike-tool \(cmd) <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
         }
         let flags = try parseFlags(Array(args.dropFirst()))
         guard let id = flags["id"] else {
             throw CLIError(message: "Missing required flag: --id")
         }
         let writeMode = try parseWriteMode(flags: flags)
+        let backupMode = try parseBackupMode(flags: flags)
 
         let bike = try BikeDocument(path: file)
         let changed = try bike.setDone(id: id, markDone: markDone)
         guard changed else {
             throw CLIError(message: "No row found with id=\(id)")
         }
-        try bike.saveWithBackup(writeMode: writeMode)
+        try bike.saveWithBackup(writeMode: writeMode, backupMode: backupMode)
         if markDone {
             print("Marked done id=\(id)")
         } else {
@@ -160,21 +173,75 @@ struct BikeTool {
 
     static func handleDelete(args: [String]) throws {
         guard let file = args.first else {
-            throw CLIError(message: "Usage: bike-tool delete <file.bike> --id <id> [--write-mode coordinated|atomic|inplace]")
+            throw CLIError(message: "Usage: bike-tool delete <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
         }
         let flags = try parseFlags(Array(args.dropFirst()))
         guard let id = flags["id"] else {
             throw CLIError(message: "Missing required flag: --id")
         }
         let writeMode = try parseWriteMode(flags: flags)
+        let backupMode = try parseBackupMode(flags: flags)
 
         let bike = try BikeDocument(path: file)
         let changed = try bike.deleteRow(id: id)
         guard changed else {
             throw CLIError(message: "No row found with id=\(id)")
         }
-        try bike.saveWithBackup(writeMode: writeMode)
+        try bike.saveWithBackup(writeMode: writeMode, backupMode: backupMode)
         print("Deleted id=\(id)")
+    }
+
+    static func handleBackup(args: [String]) throws {
+        guard let subcommand = args.first else {
+            throw CLIError(message: "Usage: bike-tool backup list <file.bike> | bike-tool backup prune [<file.bike>] [--keep <count>] [--days <count>] | bike-tool backup restore <file.bike> --id <backup-id> [--write-mode coordinated|atomic|inplace]")
+        }
+
+        switch subcommand {
+        case "list":
+            guard args.count == 2 else {
+                throw CLIError(message: "Usage: bike-tool backup list <file.bike>")
+            }
+            let fileURL = URL(fileURLWithPath: args[1]).standardizedFileURL
+            let backups = try BackupManager.listBackups(for: fileURL)
+            if backups.isEmpty {
+                print("No backups found for \(fileURL.path)")
+                return
+            }
+            for backup in backups {
+                print("\(backup.id)\t\(backup.createdAt)\t\(backup.sizeBytes) bytes")
+            }
+        case "prune":
+            var tail = Array(args.dropFirst())
+            var fileURL: URL?
+            if let first = tail.first, !first.hasPrefix("--") {
+                fileURL = URL(fileURLWithPath: first).standardizedFileURL
+                tail.removeFirst()
+            }
+            let flags = try parseFlags(tail)
+            let keep = try parsePositiveIntFlag(flags["keep"], name: "keep", defaultValue: BackupManager.defaultKeepCount)
+            let days = try parsePositiveIntFlag(flags["days"], name: "days", defaultValue: BackupManager.defaultMaxAgeDays)
+            let removedCount: Int
+            if let fileURL {
+                removedCount = try BackupManager.pruneBackups(for: fileURL, keep: keep, maxAgeDays: days)
+            } else {
+                removedCount = try BackupManager.pruneAllBackups(keep: keep, maxAgeDays: days)
+            }
+            print("Pruned \(removedCount) backups.")
+        case "restore":
+            guard args.count >= 3 else {
+                throw CLIError(message: "Usage: bike-tool backup restore <file.bike> --id <backup-id> [--write-mode coordinated|atomic|inplace]")
+            }
+            let fileURL = URL(fileURLWithPath: args[1]).standardizedFileURL
+            let flags = try parseFlags(Array(args.dropFirst(2)))
+            guard let backupID = flags["id"] else {
+                throw CLIError(message: "Missing required flag: --id")
+            }
+            let writeMode = try parseWriteMode(flags: flags)
+            try BackupManager.restoreBackup(for: fileURL, backupID: backupID, writeMode: writeMode)
+            print("Restored \(fileURL.path) from backup id=\(backupID)")
+        default:
+            throw CLIError(message: "Unknown backup subcommand '\(subcommand)'. Use list|prune|restore.")
+        }
     }
 
     static func parseWriteMode(flags: [String: String]) throws -> WriteMode {
@@ -183,6 +250,22 @@ struct BikeTool {
             throw CLIError(message: "Invalid --write-mode '\(raw)'. Use coordinated|atomic|inplace.")
         }
         return mode
+    }
+
+    static func parseBackupMode(flags: [String: String]) throws -> BackupMode {
+        let raw = flags["backup-mode"] ?? BackupMode.managed.rawValue
+        guard let mode = BackupMode(rawValue: raw) else {
+            throw CLIError(message: "Invalid --backup-mode '\(raw)'. Use managed|inline|none.")
+        }
+        return mode
+    }
+
+    static func parsePositiveIntFlag(_ rawValue: String?, name: String, defaultValue: Int) throws -> Int {
+        guard let rawValue else { return defaultValue }
+        guard let parsed = Int(rawValue), parsed > 0 else {
+            throw CLIError(message: "Invalid --\(name) '\(rawValue)'. Use a positive integer.")
+        }
+        return parsed
     }
 
     static func parseFlags(_ args: [String]) throws -> [String: String] {
@@ -283,15 +366,15 @@ final class BikeDocument {
         return true
     }
 
-    func saveWithBackup(writeMode: WriteMode = .coordinated) throws {
+    func saveWithBackup(writeMode: WriteMode = .coordinated, backupMode: BackupMode = .managed) throws {
         let outData = try serializedXML()
         switch writeMode {
         case .coordinated:
-            try writeCoordinated(outData)
+            try writeCoordinated(outData, backupMode: backupMode)
         case .atomic:
-            try writeNonCoordinated(outData, atomic: true)
+            try writeNonCoordinated(outData, atomic: true, backupMode: backupMode)
         case .inplace:
-            try writeNonCoordinated(outData, atomic: false)
+            try writeNonCoordinated(outData, atomic: false, backupMode: backupMode)
         }
     }
 
@@ -315,8 +398,8 @@ final class BikeDocument {
         return outData
     }
 
-    private func writeNonCoordinated(_ data: Data, atomic: Bool) throws {
-        try writeBackup(for: url)
+    private func writeNonCoordinated(_ data: Data, atomic: Bool, backupMode: BackupMode) throws {
+        try writeBackup(for: url, mode: backupMode)
         if atomic {
             try data.write(to: url, options: .atomic)
         } else {
@@ -324,14 +407,14 @@ final class BikeDocument {
         }
     }
 
-    private func writeCoordinated(_ data: Data) throws {
+    private func writeCoordinated(_ data: Data, backupMode: BackupMode) throws {
         let coordinator = NSFileCoordinator(filePresenter: nil)
         var coordinatorError: NSError?
         var writeError: Error?
 
         coordinator.coordinate(writingItemAt: url, options: .forReplacing, error: &coordinatorError) { coordinatedURL in
             do {
-                try writeBackup(for: coordinatedURL)
+                try writeBackup(for: coordinatedURL, mode: backupMode)
                 try data.write(to: coordinatedURL, options: .atomic)
             } catch {
                 writeError = error
@@ -346,12 +429,19 @@ final class BikeDocument {
         }
     }
 
-    private func writeBackup(for sourceURL: URL) throws {
-        let backupURL = URL(fileURLWithPath: sourceURL.path + ".bak")
-        if FileManager.default.fileExists(atPath: backupURL.path) {
-            try FileManager.default.removeItem(at: backupURL)
+    private func writeBackup(for sourceURL: URL, mode: BackupMode) throws {
+        switch mode {
+        case .managed:
+            _ = try BackupManager.createManagedBackup(for: sourceURL)
+        case .inline:
+            let backupURL = URL(fileURLWithPath: sourceURL.path + ".bak")
+            if FileManager.default.fileExists(atPath: backupURL.path) {
+                try FileManager.default.removeItem(at: backupURL)
+            }
+            try FileManager.default.copyItem(at: sourceURL, to: backupURL)
+        case .none:
+            return
         }
-        try FileManager.default.copyItem(at: sourceURL, to: backupURL)
     }
 
     private func topUL() throws -> XMLElement {
@@ -442,6 +532,221 @@ final class BikeDocument {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
         return formatter.string(from: Date())
+    }
+}
+
+struct BackupEntry {
+    let id: String
+    let url: URL
+    let createdDate: Date
+    let sizeBytes: Int64
+
+    var createdAt: String {
+        BackupManager.humanDateFormatter.string(from: createdDate)
+    }
+}
+
+enum BackupManager {
+    static let defaultKeepCount = 10
+    static let defaultMaxAgeDays = 30
+
+    static let humanDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss ZZZZ"
+        return formatter
+    }()
+
+    static let filenameDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd-HHmmssSSS"
+        return formatter
+    }()
+
+    static func createManagedBackup(for sourceURL: URL) throws -> URL {
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            throw CLIError(message: "Cannot create backup. Source file not found: \(sourceURL.path)")
+        }
+
+        let sourceDirectory = sourceBackupsDirectory(for: sourceURL)
+        try FileManager.default.createDirectory(at: sourceDirectory, withIntermediateDirectories: true)
+
+        let timestamp = filenameDateFormatter.string(from: Date())
+        let backupFileName = "\(timestamp)-\(UUID().uuidString)-\(sourceURL.lastPathComponent).bak"
+        let backupURL = sourceDirectory.appendingPathComponent(backupFileName)
+
+        try FileManager.default.copyItem(at: sourceURL, to: backupURL)
+
+        do {
+            _ = try pruneBackups(for: sourceURL, keep: defaultKeepCount, maxAgeDays: defaultMaxAgeDays)
+        } catch {
+            fputs("Warning: backup prune failed for \(sourceURL.path): \(error)\n", stderr)
+        }
+        return backupURL
+    }
+
+    static func listBackups(for sourceURL: URL) throws -> [BackupEntry] {
+        let sourceDirectory = sourceBackupsDirectory(for: sourceURL)
+        guard FileManager.default.fileExists(atPath: sourceDirectory.path) else {
+            return []
+        }
+        return try loadBackupEntries(in: sourceDirectory)
+    }
+
+    static func pruneBackups(for sourceURL: URL, keep: Int, maxAgeDays: Int) throws -> Int {
+        let sourceDirectory = sourceBackupsDirectory(for: sourceURL)
+        guard FileManager.default.fileExists(atPath: sourceDirectory.path) else {
+            return 0
+        }
+
+        let removed = try pruneEntries(in: sourceDirectory, keep: keep, maxAgeDays: maxAgeDays)
+        try deleteDirectoryIfEmpty(sourceDirectory)
+        return removed
+    }
+
+    static func pruneAllBackups(keep: Int, maxAgeDays: Int) throws -> Int {
+        let root = backupRootDirectory()
+        guard FileManager.default.fileExists(atPath: root.path) else {
+            return 0
+        }
+
+        let directories = try FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        var removed = 0
+        for directory in directories {
+            let values = try directory.resourceValues(forKeys: [.isDirectoryKey])
+            guard values.isDirectory == true else { continue }
+            removed += try pruneEntries(in: directory, keep: keep, maxAgeDays: maxAgeDays)
+            try deleteDirectoryIfEmpty(directory)
+        }
+        return removed
+    }
+
+    static func restoreBackup(for sourceURL: URL, backupID: String, writeMode: WriteMode) throws {
+        let backupEntries = try listBackups(for: sourceURL)
+        guard let backup = backupEntries.first(where: { $0.id == backupID }) else {
+            throw CLIError(message: "Backup id not found for \(sourceURL.path): \(backupID)")
+        }
+
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: sourceURL.path) {
+            _ = try createManagedBackup(for: sourceURL)
+        } else {
+            let parentDirectory = sourceURL.deletingLastPathComponent()
+            try fileManager.createDirectory(at: parentDirectory, withIntermediateDirectories: true)
+        }
+
+        let backupData = try Data(contentsOf: backup.url)
+        switch writeMode {
+        case .coordinated:
+            if fileManager.fileExists(atPath: sourceURL.path) {
+                let coordinator = NSFileCoordinator(filePresenter: nil)
+                var coordinatorError: NSError?
+                var writeError: Error?
+                coordinator.coordinate(writingItemAt: sourceURL, options: .forReplacing, error: &coordinatorError) { coordinatedURL in
+                    do {
+                        try backupData.write(to: coordinatedURL, options: .atomic)
+                    } catch {
+                        writeError = error
+                    }
+                }
+                if let coordinatorError {
+                    throw coordinatorError
+                }
+                if let writeError {
+                    throw writeError
+                }
+            } else {
+                try backupData.write(to: sourceURL, options: .atomic)
+            }
+        case .atomic:
+            try backupData.write(to: sourceURL, options: .atomic)
+        case .inplace:
+            try backupData.write(to: sourceURL)
+        }
+    }
+
+    static func backupRootDirectory() -> URL {
+        if let explicit = ProcessInfo.processInfo.environment["BIKETOOL_BACKUP_DIR"], !explicit.isEmpty {
+            return URL(fileURLWithPath: explicit, isDirectory: true).standardizedFileURL
+        }
+
+        let codexHome: String
+        if let configured = ProcessInfo.processInfo.environment["CODEX_HOME"], !configured.isEmpty {
+            codexHome = configured
+        } else {
+            codexHome = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+                .appendingPathComponent(".codex", isDirectory: true)
+                .path
+        }
+
+        return URL(fileURLWithPath: codexHome, isDirectory: true)
+            .appendingPathComponent("state", isDirectory: true)
+            .appendingPathComponent("bike-tool", isDirectory: true)
+            .appendingPathComponent("backups", isDirectory: true)
+            .standardizedFileURL
+    }
+
+    static func sourceBackupsDirectory(for sourceURL: URL) -> URL {
+        let canonicalPath = sourceURL.standardizedFileURL.path
+        var encoded = Data(canonicalPath.utf8).base64EncodedString()
+        encoded = encoded
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        if encoded.isEmpty {
+            encoded = "root"
+        }
+        return backupRootDirectory().appendingPathComponent(encoded, isDirectory: true)
+    }
+
+    private static func loadBackupEntries(in directory: URL) throws -> [BackupEntry] {
+        let files = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey, .fileSizeKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        var entries: [BackupEntry] = []
+        for file in files where file.pathExtension == "bak" {
+            let values = try file.resourceValues(forKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey, .fileSizeKey])
+            guard values.isRegularFile == true else { continue }
+            let createdDate = values.creationDate ?? values.contentModificationDate ?? .distantPast
+            let sizeBytes = Int64(values.fileSize ?? 0)
+            entries.append(BackupEntry(id: file.lastPathComponent, url: file, createdDate: createdDate, sizeBytes: sizeBytes))
+        }
+
+        entries.sort { $0.createdDate > $1.createdDate }
+        return entries
+    }
+
+    private static func pruneEntries(in directory: URL, keep: Int, maxAgeDays: Int) throws -> Int {
+        let entries = try loadBackupEntries(in: directory)
+        guard !entries.isEmpty else { return 0 }
+
+        let cutoffDate = Date().addingTimeInterval(-TimeInterval(maxAgeDays * 86_400))
+        var removed = 0
+        for (index, entry) in entries.enumerated() {
+            if index >= keep || entry.createdDate < cutoffDate {
+                try FileManager.default.removeItem(at: entry.url)
+                removed += 1
+            }
+        }
+        return removed
+    }
+
+    private static func deleteDirectoryIfEmpty(_ directory: URL) throws {
+        let remaining = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+        if remaining.isEmpty {
+            try FileManager.default.removeItem(at: directory)
+        }
     }
 }
 

@@ -53,7 +53,8 @@ If `/Users/robin/.codex/bin/bike-tool` is missing, run `scripts/install.sh` befo
 - Use `bike-tool` for all mutations.
 - Preserve unknown row attributes and inline rich-text markup.
 - Use absolute paths for `.bike` command arguments.
-- After write operations, expect a `<file>.bak` backup.
+- Default backup mode is managed (no sidecar file): backups go to `$CODEX_HOME/state/bike-tool/backups` or `~/.codex/state/bike-tool/backups`.
+- Use `--backup-mode inline` only when a sidecar `<file>.bak` is explicitly requested.
 
 ## Typical user requests and mapping
 
@@ -62,4 +63,3 @@ If `/Users/robin/.codex/bin/bike-tool` is missing, run `scripts/install.sh` befo
 - "Mark task done/undone" -> `bike-tool done` / `bike-tool undone`.
 - "Add a task/note/heading" -> `bike-tool add`.
 - "Delete a row" -> `bike-tool delete`.
-
