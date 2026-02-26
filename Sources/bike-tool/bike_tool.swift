@@ -5,6 +5,12 @@ struct CLIError: Error, CustomStringConvertible {
     var description: String { message }
 }
 
+enum WriteMode: String {
+    case coordinated
+    case atomic
+    case inplace
+}
+
 struct Row {
     let id: String
     let type: String?
@@ -48,6 +54,8 @@ struct BikeTool {
             try handleDone(args: Array(args.dropFirst()), markDone: true)
         case "undone":
             try handleDone(args: Array(args.dropFirst()), markDone: false)
+        case "delete":
+            try handleDelete(args: Array(args.dropFirst()))
         default:
             throw CLIError(message: "Unknown command '\(command)'. Run 'bike-tool help'.")
         }
@@ -62,9 +70,10 @@ struct BikeTool {
           bike-tool validate <file.bike>
           bike-tool list <file.bike>
           bike-tool to-json <file.bike> [--rich-text]
-          bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type task|note|heading]
-          bike-tool done <file.bike> --id <id>
-          bike-tool undone <file.bike> --id <id>
+          bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace]
+          bike-tool done <file.bike> --id <id> [--write-mode coordinated|atomic|inplace]
+          bike-tool undone <file.bike> --id <id> [--write-mode coordinated|atomic|inplace]
+          bike-tool delete <file.bike> --id <id> [--write-mode coordinated|atomic|inplace]
         """)
     }
 
@@ -106,12 +115,13 @@ struct BikeTool {
 
     static func handleAdd(args: [String]) throws {
         guard let file = args.first else {
-            throw CLIError(message: "Usage: bike-tool add <file.bike> --text \"<text>\" [--parent-id <id>] [--type task|note|heading]")
+            throw CLIError(message: "Usage: bike-tool add <file.bike> --text \"<text>\" [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace]")
         }
         let flags = try parseFlags(Array(args.dropFirst()))
         guard let text = flags["text"] else {
             throw CLIError(message: "Missing required flag: --text")
         }
+        let writeMode = try parseWriteMode(flags: flags)
         let parentID = flags["parent-id"]
         let type = flags["type"] ?? "task"
         guard ["task", "note", "heading"].contains(type) else {
@@ -120,7 +130,7 @@ struct BikeTool {
 
         let bike = try BikeDocument(path: file)
         let newID = try bike.addRow(text: text, type: type, parentID: parentID)
-        try bike.saveWithBackup()
+        try bike.saveWithBackup(writeMode: writeMode)
         print("Added row id=\(newID)")
     }
 
@@ -133,18 +143,46 @@ struct BikeTool {
         guard let id = flags["id"] else {
             throw CLIError(message: "Missing required flag: --id")
         }
+        let writeMode = try parseWriteMode(flags: flags)
 
         let bike = try BikeDocument(path: file)
         let changed = try bike.setDone(id: id, markDone: markDone)
         guard changed else {
             throw CLIError(message: "No row found with id=\(id)")
         }
-        try bike.saveWithBackup()
+        try bike.saveWithBackup(writeMode: writeMode)
         if markDone {
             print("Marked done id=\(id)")
         } else {
             print("Marked undone id=\(id)")
         }
+    }
+
+    static func handleDelete(args: [String]) throws {
+        guard let file = args.first else {
+            throw CLIError(message: "Usage: bike-tool delete <file.bike> --id <id> [--write-mode coordinated|atomic|inplace]")
+        }
+        let flags = try parseFlags(Array(args.dropFirst()))
+        guard let id = flags["id"] else {
+            throw CLIError(message: "Missing required flag: --id")
+        }
+        let writeMode = try parseWriteMode(flags: flags)
+
+        let bike = try BikeDocument(path: file)
+        let changed = try bike.deleteRow(id: id)
+        guard changed else {
+            throw CLIError(message: "No row found with id=\(id)")
+        }
+        try bike.saveWithBackup(writeMode: writeMode)
+        print("Deleted id=\(id)")
+    }
+
+    static func parseWriteMode(flags: [String: String]) throws -> WriteMode {
+        let raw = flags["write-mode"] ?? WriteMode.coordinated.rawValue
+        guard let mode = WriteMode(rawValue: raw) else {
+            throw CLIError(message: "Invalid --write-mode '\(raw)'. Use coordinated|atomic|inplace.")
+        }
+        return mode
     }
 
     static func parseFlags(_ args: [String]) throws -> [String: String] {
@@ -239,13 +277,25 @@ final class BikeDocument {
         return true
     }
 
-    func saveWithBackup() throws {
-        let backupPath = path + ".bak"
-        if FileManager.default.fileExists(atPath: backupPath) {
-            try FileManager.default.removeItem(atPath: backupPath)
-        }
-        try FileManager.default.copyItem(atPath: path, toPath: backupPath)
+    func deleteRow(id: String) throws -> Bool {
+        guard let li = findLI(id: id) else { return false }
+        li.detach()
+        return true
+    }
 
+    func saveWithBackup(writeMode: WriteMode = .coordinated) throws {
+        let outData = try serializedXML()
+        switch writeMode {
+        case .coordinated:
+            try writeCoordinated(outData)
+        case .atomic:
+            try writeNonCoordinated(outData, atomic: true)
+        case .inplace:
+            try writeNonCoordinated(outData, atomic: false)
+        }
+    }
+
+    private func serializedXML() throws -> Data {
         doc.characterEncoding = "UTF-8"
         doc.version = "1.0"
         let xmlData = doc.xmlData(options: [.nodePrettyPrint, .nodeCompactEmptyElement])
@@ -262,7 +312,46 @@ final class BikeDocument {
         guard let outData = xml.data(using: .utf8) else {
             throw CLIError(message: "Unable to encode XML output as UTF-8.")
         }
-        try outData.write(to: url, options: .atomic)
+        return outData
+    }
+
+    private func writeNonCoordinated(_ data: Data, atomic: Bool) throws {
+        try writeBackup(for: url)
+        if atomic {
+            try data.write(to: url, options: .atomic)
+        } else {
+            try data.write(to: url)
+        }
+    }
+
+    private func writeCoordinated(_ data: Data) throws {
+        let coordinator = NSFileCoordinator(filePresenter: nil)
+        var coordinatorError: NSError?
+        var writeError: Error?
+
+        coordinator.coordinate(writingItemAt: url, options: .forReplacing, error: &coordinatorError) { coordinatedURL in
+            do {
+                try writeBackup(for: coordinatedURL)
+                try data.write(to: coordinatedURL, options: .atomic)
+            } catch {
+                writeError = error
+            }
+        }
+
+        if let coordinatorError {
+            throw coordinatorError
+        }
+        if let writeError {
+            throw writeError
+        }
+    }
+
+    private func writeBackup(for sourceURL: URL) throws {
+        let backupURL = URL(fileURLWithPath: sourceURL.path + ".bak")
+        if FileManager.default.fileExists(atPath: backupURL.path) {
+            try FileManager.default.removeItem(at: backupURL)
+        }
+        try FileManager.default.copyItem(at: sourceURL, to: backupURL)
     }
 
     private func topUL() throws -> XMLElement {

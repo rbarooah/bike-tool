@@ -25,6 +25,7 @@ Use this skill when a request involves `.bike` files, including:
 - summarizing outstanding work
 - extracting machine-readable structure
 - adding tasks/notes/headings
+- deleting rows
 - marking tasks done/undone
 
 ## When Not To Use
@@ -48,6 +49,14 @@ If unavailable, build/install from:
 - Always preserve inline rich paragraph markup (`strong`, `span`, `em`, `mark`, `code`).
 - Treat missing `data-type` as generic `item`; do not coerce type unless asked.
 - Use absolute file paths for all commands.
+
+## Enforcement Policy
+
+- Never directly edit `.bike` files with generic file editors or patch tools.
+- Never perform ad-hoc XML surgery on `.bike` content.
+- Use `bike-tool` for all `.bike` mutations.
+- If a requested `.bike` change is not supported by `bike-tool`, refuse direct edit and state that the tool must be extended first.
+- If explicitly asked to "edit the XML directly", refuse and restate the `bike-tool`-only policy.
 
 ## Next Task Rule
 
@@ -80,6 +89,8 @@ If no open task exists, report that explicitly.
 /Users/robin/.codex/bin/bike-tool add "/absolute/path/file.bike" --text "Child row" --type note --parent-id abc123
 /Users/robin/.codex/bin/bike-tool done "/absolute/path/file.bike" --id abc123
 /Users/robin/.codex/bin/bike-tool undone "/absolute/path/file.bike" --id abc123
+/Users/robin/.codex/bin/bike-tool delete "/absolute/path/file.bike" --id abc123
+/Users/robin/.codex/bin/bike-tool done "/absolute/path/file.bike" --id abc123 --write-mode atomic
 ```
 
 ## Notes
@@ -87,3 +98,4 @@ If no open task exists, report that explicitly.
 - `to-json` includes each row's `attributes` map, so custom attributes are preserved in output.
 - Use `--rich-text` when inline formatting inside `<p>` matters.
 - Some rows may have no `data-type`; treat them as generic `item` rows.
+- Write commands default to `--write-mode coordinated` and support `atomic`/`inplace` for troubleshooting.

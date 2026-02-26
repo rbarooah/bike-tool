@@ -23,6 +23,20 @@ cd /Users/robin/src/bike-tool
 .build/debug/bike-tool help
 ```
 
+Quick smoke checks:
+
+```bash
+# Default coordinated write
+.build/debug/bike-tool done "/tmp/test.bike" --id someRowId
+
+# Explicit alternate modes
+.build/debug/bike-tool done "/tmp/test.bike" --id someRowId --write-mode atomic
+.build/debug/bike-tool done "/tmp/test.bike" --id someRowId --write-mode inplace
+
+# Delete row
+.build/debug/bike-tool delete "/tmp/test.bike" --id someRowId
+```
+
 ## Release Install
 
 ```bash

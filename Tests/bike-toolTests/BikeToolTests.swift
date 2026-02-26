@@ -34,6 +34,23 @@ final class BikeToolTests: XCTestCase {
         XCTAssertTrue(json.contains("\"richText\""), "JSON should include richText when requested.")
     }
 
+    func testDeleteRowRemovesNodeAndKeepsDocumentValid() throws {
+        let tempURL = try copyFixtureToTempFile()
+
+        let bike = try BikeDocument(path: tempURL.path)
+        let deleted = try bike.deleteRow(id: "re2")
+        XCTAssertTrue(deleted, "Expected deleteRow to remove an existing row.")
+        try bike.saveWithBackup()
+
+        _ = try BikeDocument(path: tempURL.path)
+
+        let content = try String(contentsOf: tempURL, encoding: .utf8)
+        XCTAssertFalse(content.contains("id=\"re2\""), "Deleted row should not remain in output XML.")
+
+        let backupURL = URL(fileURLWithPath: tempURL.path + ".bak")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backupURL.path), "Delete should create a backup before writing.")
+    }
+
     private func copyFixtureToTempFile() throws -> URL {
         let fixture = fixtureURL()
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
