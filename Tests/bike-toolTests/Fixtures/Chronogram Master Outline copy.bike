@@ -1,0 +1,627 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8"/>
+  </head>
+  <body>
+    <ul id="ZdhrW2f4">
+      <li id="cOV" data-type="heading">
+        <p>*** Immediate Issues ***</p>
+        <ul>
+          <li id="DaZ" data-done="2025-11-07T16:47:52Z" data-type="task">
+            <p>Structured info editor in XCode shows XML instead of structure.</p>
+            <ul>
+              <li id="fb" indent="2" data-type="note">
+                <p>when I select the project in the XCode navigator, I see XML instead of the</p>
+              </li>
+              <li id="Zr" indent="2" data-type="note">
+                <p>regular structured editor.  Please fix this.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="fsi" data-done="2026-01-27T16:03:56Z" data-type="task">
+            <p>The app takes forever to start up when testing on-device, but starts normally outside the debugger.</p>
+          </li>
+          <li id="8r" data-type="task">
+            <p>“Record another” isn’t working </p>
+            <ul>
+              <li id="re2" data-type="task">
+                <p>Record Fear from this morning</p>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li id="bXW">
+        <p/>
+      </li>
+      <li id="-0" data-type="heading">
+        <p>Use Cases and Requirements</p>
+        <ul>
+          <li id="8BT">
+            <p>Using chronogram for mission scheduling, and temporal awareness</p>
+            <ul>
+              <li id="peL">
+                <p>It should be easy to keep track of events in the future on both small and large time scales.</p>
+                <ul>
+                  <li id="6lV">
+                    <p>It should be possible to track multiple events on a given day that are part of a timetable so the user always knows where they are and how much time is left before the next scheduled event.</p>
+                  </li>
+                  <li id="vi_">
+                    <p>Equally, it should be possible to keep track of a number of future events, such as: tax filing dates, expected milestones in projects and plans etc.</p>
+                  </li>
+                  <li id="xBh">
+                    <p>Chronograms should be able to produce visualizations at each timescale, with minimal user intervention.</p>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li id="Rz">
+        <p/>
+      </li>
+      <li id="iq" data-type="heading">
+        <p>Major Areas of Focus</p>
+        <ul>
+          <li id="vr" data-type="heading">
+            <p>Planning</p>
+            <ul>
+              <li id="kYk">
+                <p>It should be really easy to create a multi step plan, and to reuse it by rescheduling it for another time. </p>
+              </li>
+              <li id="OBe" data-done="2026-01-24T17:04:27Z" data-type="task">
+                <p>Turning something into a plan should automatically make it show as a single event in parent views.</p>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li id="1o">
+        <p/>
+      </li>
+      <li id="pr" data-type="heading">
+        <p>Major Feature Proposals</p>
+        <ul>
+          <li id="LPU" data-type="heading">
+            <p>Sources</p>
+            <ul>
+              <li id="vNs" data-type="heading">
+                <p>HealthKit</p>
+                <ul>
+                  <li id="Bd8">
+                    <p>Each characteristic would be a series of events.</p>
+                  </li>
+                </ul>
+              </li>
+              <li id="wy7" data-type="heading">
+                <p>System Calendar</p>
+                <ul>
+                  <li id="PuZ" data-type="note">
+                    <p>The idea is to be able to display events from the system calendar on a timeline. Calendars would be topics, events would map to events, and repeating events would produce a series.</p>
+                  </li>
+                </ul>
+              </li>
+              <li id="uk" data-type="heading">
+                <p>Filesystem</p>
+                <ul>
+                  <li id="LCu" data-type="note">
+                    <p>The idea is to use the file system as a source of Timeline information.The file names would be the event names, and the timestamps would be the event dates. It would be possible to choose whether to use the modified date or the creation date.</p>
+                  </li>
+                  <li id="PDL" data-type="task">
+                    <p>Drag a folder onto the app icon to open a window.</p>
+                  </li>
+                  <li id="9TV" data-type="task">
+                    <p>Enable folders to act as topics to produce a topic hierarchy.</p>
+                  </li>
+                  <li id="K62" data-type="task">
+                    <p>Allow Git to enable folders to show changes to a file as a series.</p>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li id="Vg" data-type="heading">
+            <p>Data with events</p>
+            <ul>
+              <li id="la6">
+                <p>I'd like to be able to store data fields alongside each event. It should be possible to store different kinds of data, such as text and numbers, representing different things, like currencies and weights, etc. It should be possible to store an arbitrary number of fields per event. Support for larger binary data types, such as images or audio recordings, should also be considered. </p>
+              </li>
+              <li id="lbN">
+                <p>Can you explore how this feature should be implemented?  I’m interested in both the technical options and considerations, as well as the ways it will integrate into the user interface.</p>
+              </li>
+              <li id="7WI">
+                <p>This is an initial investigation so I’m not rushing to an implementation plan, so I’m asking you to explore the codebase as well as options for implementation in order to produce the most comprehensive report to help consider the next steps.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="73" data-type="heading">
+            <p>Annual calendar replacement</p>
+            <ul>
+              <li id="_M">
+                <p>I'd like to fully replace the printouts I use for my annual calendar by having forecast views that let me see what’s going on </p>
+              </li>
+            </ul>
+          </li>
+          <li id="tc" data-type="heading">
+            <p>Clock faces</p>
+            <ul>
+              <li id="ES">
+                <p>There should be a wide range of displays that show general elapsed time as widgets.</p>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li id="_S" data-type="heading">
+        <p>Feature Requests</p>
+        <ul>
+          <li id="U5" data-type="task">
+            <p><strong>Ordered Events with no start or end time: </strong><span>It would be nice to be able to add events to a plan (or any topic) without also specifying a start and end time, but have them be part of an ordered series so that they stay in sequence.  This would be useful when start and end times are not known, or when making a plan without wanting to have to be accurate about timing up front.</span></p>
+          </li>
+          <li id="PnP" data-type="task">
+            <p><strong>Plan templates:</strong><span> It would be nice to have the option to have plans that are linked to an original template, such that if the template is changed, all of the dependent plans change too.</span></p>
+          </li>
+          <li id="GUs" data-type="task">
+            <p><strong>Move together:</strong><span> I'd like to be able to select a group of And then adjust the start time for the first one, and see the following ones have their start time adjusted so that the relative time intervals between them remain the same.</span></p>
+          </li>
+          <li id="LMN" data-type="task">
+            <p><strong>Link Events: </strong><span>Perhaps events could be linked so that the relative time between them is always preserved.  A link is a form of constraint. Perhaps there can be more than one kind of constraint. Relative time might be one, but then there could be completely different ones, such as "Only on a weekday." </span></p>
+          </li>
+          <li id="ie_" data-type="task">
+            <p><strong>Timers and Recording: </strong><span>It should be possible to record events in the manner of a stopwatch.  This would involve setting the start time when the stopwatch starts, and the end time when the stopwatch is stopped.  Starting and stopping the watch multiple times could create a series.  This should also be a countdown timer mode where we set a duration Starting the timer enters the start time, and the end time is entered when either the countdown timer expires, or is cancelled.  Creating a new entry in the series would remember the recording mode.</span></p>
+          </li>
+          <li id="_o6" data-type="task">
+            <p><strong>Extended display options for countdowns: </strong><span>Countdown widgets would have more options for formatting the count. Examples would include automatic, days, weeks, months or graphical.</span></p>
+          </li>
+          <li id="nm" data-type="task">
+            <p><strong>Widely available undo</strong></p>
+          </li>
+          <li id="SFc">
+            <p/>
+          </li>
+        </ul>
+      </li>
+      <li id="OH1" data-type="heading">
+        <p>Open Questions</p>
+        <ul>
+          <li id="egI" data-type="task">
+            <p>Do members of a series have to all be part of the same topic, or can they be spread across topics?</p>
+          </li>
+          <li id="Ud">
+            <p/>
+          </li>
+        </ul>
+      </li>
+      <li id="Pc" data-type="heading">
+        <p>Design Prompts</p>
+        <ul>
+          <li id="U0" data-done="2025-11-05T16:41:40Z" data-type="task">
+            <p><strong>Implementing basic selection for the mac app</strong></p>
+            <ul>
+              <li id="4p" data-type="note">
+                <p>I'm developing my app using the latest version of the operating system and Liquid Glass etc. I like a sidebar on the left. It's going to include various ways to select and focus on data, as is customary in Mac OS applications. The first way will simply be to allow selection from a hierarchical list of topics. The main content will be a list of events that are part of one of the selected topics. An alternative display there'll be a graphical timeline. It should be possible to split the main content view horizontally, so the lower half is the timeline, and the upper half is the table or list of events that are selected in the sidebar. The timeline will default to showing all of the events in the table, but the user may also select one or more events from the table, which will cause the timeline to focus only on the events selected.</p>
+              </li>
+              <li id="xi" data-type="note">
+                <p>Please outline how the SwiftUI hierarchy would be built. You don't need to worry about how the timeline itself is drawn. I'm interested in how to create the necessary structure within SwiftUI to enable this design.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="eBj" data-done="2025-11-05T16:41:20Z" data-type="task">
+            <p><strong>Implementing a live activity for the iOS App</strong></p>
+            <ul>
+              <li id="Eyk" data-type="note">
+                <p>I'd like to focus on the iOS app. I want to add a new feature. This feature would be a live activity based on the starred events occurring on the current day. Please describe how such a feature would work and explore implementation. Please do not start implementing yet.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="sF" data-done="2025-11-05T16:41:24Z" data-type="task">
+            <p><strong>Making the live activity use the series diagram</strong></p>
+            <ul>
+              <li id="WS" data-type="note">
+                <p>The Basic Live Activity prototype is working to some extent. I’d like to update it to use the series diagram as the centerpiece of the live activity display. The diagram should show all of the start events that day, including those that have passed. The activity should have a textual title showing the name of the next start event that hasn't passed, along with a countdown time remaining until that event. Please explore the implementation of this and describe how you'd make it work. Do not start implementing yet.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="MF" data-done="2025-11-05T16:41:04Z" data-type="task">
+            <p><strong>Exploring the idea of making plans reusable</strong></p>
+            <ul>
+              <li id="yz" data-type="note">
+                <p>Now that the live activity is in place, it's convenient to use a topic to organize a set of events that form a plan which can then all be starred to cause them to appear in the live activity on the appointed day. I'd like to expand on this use case, and the first idea I have is to enable the re-use of plans. A simple way to implement this would simply be to add a reuse plan command that would apply to a topic. The user would then be asked for a new start date. This would cause a copy of the topic and all of its contained events and subtopics to be created.  The start dates of every event in this new copy would be recalculated so that the very first event in the topic takes place on a specified new start date, and all of the other events maintain their relative times to this start date, using the intervals from the source topic.</p>
+              </li>
+              <li id="0M" data-type="note">
+                <p>Initial focus will be on adding this to the ios version. The mac version doesn’t yet support editing or inserting data, and that will be a future development.</p>
+              </li>
+              <li id="W8" data-type="note">
+                <p>Does this make sense? Can you explore what it would take to implement this, and also identify potential pitfalls or implementation questions that should be resolved?I'd like a reasoned proposal. </p>
+              </li>
+              <li id="O1" data-type="heading">
+                <p>Further specifications:</p>
+                <ul>
+                  <li id="bT" data-type="note">
+                    <p>Copies of topics created using the reuse topic operation should be placed at the same level in the topic hierarchy as the original.</p>
+                  </li>
+                  <li id="jY" data-type="note">
+                    <p>The reuse flow should automatically suffix the name of newly created copies by adding an integer number to the end.  If the name already ends with a number, the flow should attempt to find the highest number for similar topics and increment that by one to create the new suffix, replacing the original suffix.</p>
+                  </li>
+                  <li id="FTZ" data-type="note">
+                    <p>The date prompt should default to the exact time and date of the original topic's first event. This would allow the user to duplicate the plan to another day by merely changing the date without editing the time, or, if they wanted to duplicate the plan to later in the same day, they could simply edit the time without affecting the date.</p>
+                  </li>
+                  <li id="6S0" data-type="note">
+                    <p>If the source plan has no dated events at all, then the reuse flow should not be possible to activate.</p>
+                  </li>
+                  <li id="J65" data-type="note">
+                    <p>For copied events whose original is part of a series, the new copy should be part of the same series. Tags and styles should be treated the same way - I.e., the new events should be members of the same set as the originals, and duplicate tag styles or series should not be generated.</p>
+                  </li>
+                  <li id="9ap" data-type="note">
+                    <p>The stars should be preserved when the copy is made.</p>
+                  </li>
+                  <li id="6V" data-type="note">
+                    <p>The ModelVisitCounter should not be updated when creating a new topic.</p>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li id="uQl" data-done="2025-11-05T16:41:06Z" data-type="task">
+            <p><strong>The live activity should open the topic the next event belongs to</strong></p>
+          </li>
+          <li id="XqF" data-done="2025-11-05T16:41:07Z" data-type="task">
+            <p><strong>Introduce like a new widget that shows a table of upcoming starred events</strong></p>
+            <ul>
+              <li id="kJ_">
+                <p>I'd like to introduce a new widget. This widget should display a table of future starred events. Each event name should be displayed as well as a relative time until the event. The goal is to complement the existing widgets and live activity by providing a longer-range forecast, therefore we wish to avoid having the widget be filled with fine-grained events from the same day. At some point in the future, we might want to create a maximum size widget that combines both the table and a series diagram, showing upcoming events on a timeline. For now, we're designing just the table, but I want you to be aware of this in case it impacts design decisions. Please investigate what it would take to build something like this, and whether there are any unanswered questions. Come up with a proposal. Please don't implement anything yet.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="l6l" data-done="2025-11-05T17:18:07Z" data-type="task">
+            <p><strong>Days major unit selected too soon - need to keep weeks for longer.</strong></p>
+            <ul>
+              <li id="0XK">
+                <p>It looks like the scale diagram switches to using days for the major intervals a little bit too soon, resulting in the labels being crushed up. It should stay with the week unit for a little bit longer.</p>
+              </li>
+              <li id="QZa">
+                <p>Does this make sense?  What change would you propose to fix it?  Don’t start implementing yet.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="PnT" data-done="2025-11-05T17:25:00Z" data-type="task">
+            <p><strong>Move Plan Command</strong></p>
+            <ul>
+              <li id="QeT">
+                <p>I'd like to add a new command quite similar in functionality to the reuse plan command. This command would allow the user to adjust the start time and date of an existing plan, and would update all of the events in the plan so they maintain their current intervals from that start from the starting event.</p>
+              </li>
+              <li id="TH4">
+                <p>Please explain your understanding of what I'm asking for and also investigate what it would take to implement it and come up with a proposal.  Don’t start implementing yet.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="6RJ" data-done="2025-11-05T17:38:00Z" data-type="task">
+            <p>Newly added items don’t always update the display in the iOS App</p>
+          </li>
+          <li id="ZdJ" data-done="2025-11-14T17:43:26Z" data-type="task">
+            <p>Refactor the iOS App?</p>
+          </li>
+          <li id="TW" data-done="2025-11-07T16:56:40Z" data-type="task">
+            <p><strong>The Series Diagram widget should only show the upcoming event when there is a series.</strong></p>
+            <ul>
+              <li id="uR">
+                <p>Currently, when the next start event is part of a series, the series diagram widget shows all of the events in the series. This is nice functionality, but for now, in the widget view, only the series diagram should show only the next event and not all of the series entries. Please examine what it would take to correct this and let me know what’s involved.  Don’t start implementing yet.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="Ebo" data-done="2025-11-07T20:52:45Z" data-type="task">
+            <p><strong>Publish starred events as a system calendar</strong></p>
+            <ul>
+              <li id="3d2">
+                <p>I'd like to add a significant new feature. The goal here would be to make the starred events available as a calendar in the iOS/Mac system.  I'm open to any reasonable proposal as to how to do this.</p>
+              </li>
+              <li id="O_c">
+                <p>Some issues we need to take into account:</p>
+                <ul>
+                  <li id="Z5N">
+                    <p>A user may be synchronizing their calendars via iCloud and have instances of these apps on iPad, Mac, and iOS.</p>
+                  </li>
+                </ul>
+              </li>
+              <li id="zjS">
+                <p>Please explore what it would take to implement this, and what questions need to be resolved in order to come up with a complete proposal.</p>
+                <ul>
+                  <li id="vi2" data-type="unordered">
+                    <p>Shifted to a read-only calendar for ease of implementation.</p>
+                  </li>
+                  <li id="74P" data-type="unordered">
+                    <p/>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li id="1c" data-done="2025-11-13T16:39:25Z" data-type="task">
+            <p><strong>Fix XCode Cloud Build issue</strong></p>
+            <ul>
+              <li id="r_" data-type="note">
+                <p>Can you investigate why XCode cloud fails to build the iPhone Desk Clock target with the error: "Command SwiftCompile failed with a nonzero exit code"?  Mac Chronogram buids fine on XCode Cloud.  Don't make any changes.  Just report on the likely causes.</p>
+              </li>
+              <li id="-V">
+                <p/>
+              </li>
+            </ul>
+          </li>
+          <li id="QkO" data-done="2025-11-18T17:45:31Z" data-type="task">
+            <p><strong>Add new events in Mac Chronogram</strong></p>
+            <ul>
+              <li id="zMG">
+                <p>I’d like to have a way to add new events within Mac Chronogram.  You can make reference to the iOS App Desk Clock when designing the feature, but are not bound to copy the patterns used exactly.  The goal is to implement a user-friendly Mac native design.  Consider also that we’ll probably want to enable editing of events soon after, and ultimately the editing capabilities of the Mac version will be brought to parity with Desk Clock, but there is no need to mirror the legacy of how the iOS versions works, and a clean implementation is preferred.</p>
+              </li>
+              <li id="1il">
+                <p>Please describe back to me how you understand this request, and then explore the best way to implement it, identifying potential pitfalls or implementation questions that need to be resolved.  I’d like a reasoned proposal.</p>
+              </li>
+              <li id="NxG" data-done="2025-11-10T16:56:05Z" data-type="task">
+                <p><em><strong>Next up: Test that we haven’t broken the iOS version</strong></em></p>
+              </li>
+            </ul>
+          </li>
+          <li id="r0I" data-done="2025-11-18T17:45:22Z" data-type="task">
+            <p><strong>Add a ‘filesystem’ alternate source</strong></p>
+            <ul>
+              <li id="QTl" data-type="unordered">
+                <p>Drag a folder in to view it</p>
+              </li>
+              <li id="6FB" data-type="unordered">
+                <p>Not part of the main database</p>
+              </li>
+              <li id="42-" data-type="unordered">
+                <p>Events can be copied into the main database though</p>
+              </li>
+              <li id="T9" data-type="note">
+                <p>I'd like to add the file system is a second source of data in Mac Chronogram. The user would be able to drag a folder onto the Mac Chronogram doc icon, and this would cause a viewer window to open with that folder as the source of data. Files would be treated as events, and folders would be treated as topics. To start with, we'll just assume that the start date of the event is the creation date of the file, Although we may later want to make it optional to use the last modified date instead.</p>
+              </li>
+              <li id="PG" data-type="note">
+                <p>Please describe back to me how you understand this request, and then explore the best way to implement it, identifying potential pitfalls or implementation questions that need to be resolved.  I’d like a reasoned proposal.</p>
+              </li>
+              <li id="12">
+                <p>First attempt at this failed because codex kept using SwiftData in the filesystem layer.  It's probably better to properly factor out Swift data from the UI.</p>
+              </li>
+              <li id="edK" data-type="note">
+                <p>Okay, I've decided that it's important to make the UI completely independent of the data source, and this means eliminating Swift Data. There'll be multiple future data sources, Not only the file system but also results of AI queries, timelines from Wikipedia, and various other kinds of timeline that we may wish to view alongside the personal data stored in the Swift Data data store.  Getting this layer right, or at least reasonably well factored, is critical to future plans. Let's start planning for this.</p>
+              </li>
+              <li id="Dil" data-type="note">
+                <p>To start with, all sources should expose the same core types, However, it is reasonable to suppose that there may, in the future, need to be some extensibility where different sources have specific metadata. Those considerations also involve having a more flexible UI layer. So it seems wise not to invest heavily in that at this point. It's more a note for the future, and something to avoid precluding.</p>
+              </li>
+              <li id="nQr" data-type="note">
+                <p>Not every source will have real-time change streaming, but some definitely will, for example a shared iCloud document, or a remotely hosted flight plan.</p>
+              </li>
+              <li id="gFX" data-type="note">
+                <p>Sources that are our rights may not support all of the operations, for example it’s possible to imaging a source that supports crud operations but not starred events.  That said, it’s not necessary to elaborate this too much at this stage.  The first additional source we will implement will be the filesystem - in the read-only mode that we experimented with earlier.  As for users being able to import data into their personal store - it will certainly be possible to copy from an external store into the user store, but it would also be desirable to be able to subscribe to external sources so that their topics can be merged with the user’s personal store - although to begin with there will be a one to one mapping between stores and viewers, this should not be taken as an assumption when designing the architecture.</p>
+              </li>
+              <li id="Z3XP" data-type="note">
+                <p>The question about cross-source aggregation follows from this - the first implementation (the filesystem source) will not support cross source aggregation, but future versions will do.</p>
+              </li>
+              <li id="_bVy" data-type="note">
+                <p>My intention is for all current functionality to be preserved.  If there are particular features that would give leverate to defer, please suggest them and I’ll tell you if it’s ok to temporarily lose them.</p>
+              </li>
+              <li id="Czju" data-type="note">
+                <p>We can page/stream results - ultimately we don’t want to be restricted in terms of the size of overall data sets that can be worked with, but they don’t have to all be loaded simultaneously.  Paging and streaming are ok.</p>
+              </li>
+              <li id="9Z3D" data-type="note">
+                <p>For clarification, the first iteration of this change should add only a filesystem source to the Mac version, as described earlier in this conversation, and ideally no existing functionality should change, but the implementation would involve the complete abstraction we’re envisioning where the UI becomes independent of swiftdata on all platforms.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="M-w" data-done="2026-01-24T17:02:38Z" data-type="task">
+            <p><strong>Add a starred events view on iOS</strong></p>
+          </li>
+          <li id="c8" data-done="2026-01-24T17:03:30Z" data-type="task">
+            <p><strong>Add a way to convert a single event into a topic, so that it's easy to expand into a plan.</strong></p>
+            <ul>
+              <li id="7E" indent="2">
+                <p>I'd like to introduce a new feature that would make it easy to select a single event and turn it into a topic containing the event as a way to make it easier to create a new subtopic and move the selected event into it. At a later point it will likely be desirable to be able to select and embed multiple events into a new subtopic. The initial implementation should be a command named something like ‘New subtopic with event’, but feel free to propose a better alternative.  The initial implementation should target the ios version, but assume that the Mac version will require it later. Please create a proposal.</p>
+              </li>
+            </ul>
+          </li>
+          <li id="UMA" data-type="task">
+            <p><strong>Introduce recurring events.</strong></p>
+            <ul>
+              <li id="9xJ" data-type="note">
+                <p>It would be really nice to introduce the idea that some events repeat based on some kind of recurrence rule or schedule. For example:</p>
+              </li>
+              <li id="gO" data-type="note">
+                <p>Key birthdays</p>
+              </li>
+              <li id="r9" data-type="note">
+                <p>Anniversaries</p>
+              </li>
+              <li id="Xt" data-type="note">
+                <p>Tax filing deadlines</p>
+              </li>
+              <li id="98" data-type="note">
+                <p>General meetings</p>
+              </li>
+              <li id="lk" data-type="note">
+                <p>Annual general meetings</p>
+              </li>
+              <li id="Hrn" data-type="note">
+                <p>What are your first thoughts on considering this?</p>
+              </li>
+            </ul>
+          </li>
+          <li id="pe" data-type="task">
+            <p>Add a way to scroll the mac table to bring the present moment into view - similar to the mechanism that exists on the ios version.</p>
+          </li>
+          <li id="el" data-done="2025-11-21T17:51:40Z" data-type="task">
+            <p><strong>Open a topic in a new window</strong></p>
+            <ul>
+              <li id="4j" data-type="note">
+                <p>I'd like an easy way to open a topic in a new window on Mac Chronogram.I think the best user experience would be to be able to double-click on a topic.The new window should open with the sidebar closed by default.I'd also like to be able to open topics in tabs.We should introduce a context menu for topics in the sidebar with commands for opening topics in either a new tab or a new window. Later we'll want to introduce editing commands into this menu, But we'll leave those out for now. Also consider what would be appropriate with regard to implementing this on iOS. It seems like it would be useful on iPadOS but it’s not so clear what the implications for iOS on iPhone would be.</p>
+              </li>
+              <li id="-l" data-type="note">
+                <p>Please describe back to me how you understand this request, and then explore the best way to implement it as elegantly as possible, identifying potential pitfalls or implementation questions that need to be resolved.  I’d like a reasoned proposal.</p>
+              </li>
+              <li id="ID" data-type="task">
+                <p><strong>The topic focus of a window doesn't currently persist across application launches</strong></p>
+              </li>
+            </ul>
+          </li>
+          <li id="aUW" data-type="task">
+            <p><strong>New events are not shown when they are part of a continuing series, and they are added on the iOS version. Maybe stop Coalescing Series on iOS</strong></p>
+          </li>
+          <li id="OAJ" data-type="task">
+            <p><strong>Add a today view on iOS</strong></p>
+          </li>
+          <li id="qym" data-type="task">
+            <p><strong>Allow the name to be edited when reusing a plan</strong></p>
+            <ul>
+              <li id="dSH">
+                <p>When the “reuse plan” command is used. I'd like the user to have an opportunity to edit the name of the plan to be created. The same logic should be used for coming up with a default, so that it would be possible for the user to behave exactly as they do now and simply adjust the date, but the new name should be available to edit in an editable field.</p>
+              </li>
+              <li id="QIV">
+                <p>Please explain your understanding of what I'm asking for and also investigate what it would take to implement it and come up with a proposal.  Don’t start implementing yet.</p>
+              </li>
+              <li id="V5">
+                <p/>
+              </li>
+            </ul>
+          </li>
+          <li id="rSP" data-done="2026-01-24T17:02:57Z" data-type="task">
+            <p><strong>What would it take to view a topic in it's Parent Event List?</strong></p>
+            <ul>
+              <li id="t99" data-type="unordered">
+                <p><span>Should this be an option on the topic view or the topic itself? (tentatively: </span><strong>the view</strong><span>)</span></p>
+              </li>
+              <li id="l3n" data-type="note">
+                <p>I'd like the option to display subtopics as if they were a single event. The subtopic start time would be the start time of the first event contained within, And the end time would be the end time of the last event. If the last event doesn't have an end time, then the start time of the last event would be used.</p>
+              </li>
+              <li id="YN0" data-type="note">
+                <p>The option would be on a per-subtopic basis.</p>
+              </li>
+              <li id="X8A" data-type="note">
+                <p>This should be regarded as a prototype feature. The goal is to create a lightweight implementation that can be experimented with and doesn't commit us to major changes to the current structure, especially the data structure. </p>
+              </li>
+              <li id="o5u" data-type="note">
+                <p>Does this make sense? Can you explore what it would take to implement this, and also identify potential pitfalls or implementation questions that should be resolved?I'd like a reasoned proposal. </p>
+              </li>
+              <li id="nt0" data-type="unordered">
+                <p>Which views would this affect - would it change the Series Diagram?</p>
+              </li>
+              <li id="XtR">
+                <p><code>codex resume 019a601a-8be3-7ad0-b57d-beaa642dcd0c</code></p>
+              </li>
+            </ul>
+          </li>
+          <li id="QDE" data-type="task">
+            <p><strong>What would it take to experiment with a vertical timeline in a large widget for the upcoming?</strong></p>
+          </li>
+          <li id="si">
+            <p/>
+          </li>
+          <li id="p3" data-type="heading">
+            <p>Quick Fixes</p>
+            <ul>
+              <li id="JSd" data-done="2026-01-24T17:02:03Z" data-type="task">
+                <p>In the event summary, I'd like to be able to long-press on the date or relative date to reveal a popover. This popover would be a more detailed examination of the relative time. It would have the duration in just days as well as a full breakdown of years, months, days, hours, minutes, and seconds.</p>
+              </li>
+              <li id="tP8" data-type="task">
+                <p/>
+              </li>
+            </ul>
+          </li>
+          <li id="jF">
+            <p/>
+          </li>
+          <li id="gk-V">
+            <p/>
+          </li>
+          <li id="YL" data-type="heading">
+            <p>Upcoming Feature Developments</p>
+          </li>
+          <li id="vg">
+            <p>Should I revert the refactoring? - yes</p>
+          </li>
+          <li id="1M">
+            <p>Vertical Table Widget</p>
+          </li>
+          <li id="-F">
+            <p>Bug in widget</p>
+          </li>
+          <li id="7H">
+            <p>Bug in Widget</p>
+          </li>
+          <li id="_n">
+            <p>Calendar Export</p>
+          </li>
+          <li id="6tn">
+            <p>Tags</p>
+          </li>
+          <li id="MD">
+            <p>AI Generated timelines</p>
+          </li>
+          <li id="3o">
+            <p>Data Fields</p>
+          </li>
+          <li id="nATt">
+            <p/>
+          </li>
+          <li id="a9IO" data-type="heading">
+            <p>Note on expanding the series diagram:</p>
+          </li>
+          <li id="CE" data-type="note">
+            <p>One future feature that's intended to be added relatively soon is to expand on the series diagram so that it can be zoomed in and also scrolled. It will also be desirable to create separate tracks for different topics so that they can be compared on the same timeline. There will be further complexity added to that feature, such as labeling of individual events and drawing in of time spans for topics or events that are shown on the diagram.</p>
+          </li>
+          <li id="7i">
+            <p/>
+          </li>
+        </ul>
+      </li>
+      <li id="4eiX" data-type="heading">
+        <p>Heading</p>
+        <ul>
+          <li id="M9" data-type="note">
+            <p>These are notes for the codex agent for figuring out the file format.</p>
+          </li>
+          <li id="hGM" data-type="quote">
+            <p><mark>This is a block quite</mark></p>
+          </li>
+          <li id="OX4" data-type="quote">
+            <p>and a second line of block quote</p>
+          </li>
+          <li id="Csi" data-type="code">
+            <p>Now we have a code block</p>
+          </li>
+          <li id="FPp" data-type="task">
+            <p>Here is part of a task list</p>
+          </li>
+          <li id="xAL" data-type="ordered">
+            <p>Now we have a two row ordered list</p>
+          </li>
+          <li id="b6J" data-type="ordered">
+            <p>This is the second row</p>
+          </li>
+          <li id="DvX" data-type="unordered">
+            <p>Now we have an unordered list</p>
+          </li>
+          <li id="NmX" data-type="unordered">
+            <p>This is the second line of that</p>
+            <ul>
+              <li id="-31" data-type="unordered">
+                <p>Nesting can be arbitratily deep</p>
+                <ul>
+                  <li id="T05" data-type="task">
+                    <p>of any kind of entry</p>
+                  </li>
+                  <li id="sjC">
+                    <p/>
+                  </li>
+                  <li id="2mh">
+                    <p/>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </body>
+</html>
