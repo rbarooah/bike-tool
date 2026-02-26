@@ -84,3 +84,7 @@ Optional write modes:
 ## Development
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## Agent Instructions
+
+For Codex-oriented repo guidance (workflow, safety constraints, command mapping), see [AGENTS.md](AGENTS.md).
