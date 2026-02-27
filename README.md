@@ -40,6 +40,36 @@ cp "$TAP_REPO/skills/bike-outline/agents/openai.yaml" "$SKILL_DIR/agents/openai.
 bike-tool help
 ```
 
+## Quick Start (Recommended for Claude Code Users)
+
+If you want the fastest path in Claude Code:
+
+```bash
+# 1) Install bike-tool with Homebrew
+brew tap rbarooah/bike-tool https://github.com/rbarooah/bike-tool
+brew install bike-tool
+
+# 2) Add project instructions for Claude Code
+cat > CLAUDE.md <<'EOF'
+# bike-tool workflow for .bike files
+
+- Use bike-tool for all .bike mutations.
+- Never hand-edit .bike XML directly.
+- Use absolute file paths for .bike command arguments.
+- Validate before and after edits:
+  - bike-tool validate "/absolute/path/file.bike"
+- Use:
+  - bike-tool list
+  - bike-tool to-json
+  - bike-tool add / add-link / done / undone / delete
+EOF
+
+# 3) Verify the CLI is installed
+bike-tool help
+```
+
+Claude-specific notes: [docs/CLAUDE_CODE.md](docs/CLAUDE_CODE.md).
+
 ## Install (Other Methods)
 
 From source:
