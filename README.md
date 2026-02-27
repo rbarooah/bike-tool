@@ -29,11 +29,20 @@ cd /path/to/bike-tool
 scripts/install.sh
 ```
 
+With Homebrew:
+
+```bash
+brew tap rbarooah/bike-tool https://github.com/rbarooah/bike-tool
+brew install bike-tool
+```
+
 Default install location:
 
 - `~/.codex/bin/bike-tool`
 
 If `CODEX_HOME` is set, the installer uses `$CODEX_HOME/bin/bike-tool`.
+
+Homebrew notes (formula update workflow, release guidance): [docs/HOMEBREW.md](docs/HOMEBREW.md).
 
 ## Codex Skill
 
