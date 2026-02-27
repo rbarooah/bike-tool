@@ -11,6 +11,8 @@ brew tap rbarooah/bike-tool https://github.com/rbarooah/bike-tool
 brew install bike-tool
 ```
 
+For first-time Codex setup (install CLI + skill together), use the quick start in [README.md](../README.md#quick-start-recommended-for-codex-users).
+
 ## Update the Formula for a New Release
 
 The formula currently uses an immutable source archive URL pinned to a commit hash. For each new release:

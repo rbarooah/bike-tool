@@ -20,7 +20,27 @@ A Swift CLI for reading and safely editing [Bike.app](https://www.hogbaysoftware
 - macOS
 - Swift 6+
 
-## Install
+## Quick Start (Recommended for Codex Users)
+
+If you want the fastest path to using the `bike-outline` skill:
+
+```bash
+# 1) Install bike-tool with Homebrew
+brew tap rbarooah/bike-tool https://github.com/rbarooah/bike-tool
+brew install bike-tool
+
+# 2) Install the bike-outline skill into your Codex skills directory
+TAP_REPO="$(brew --repository rbarooah/bike-tool)"
+SKILL_DIR="${CODEX_HOME:-$HOME/.codex}/skills/bike-outline"
+mkdir -p "$SKILL_DIR/agents"
+cp "$TAP_REPO/skills/bike-outline/SKILL.md" "$SKILL_DIR/SKILL.md"
+cp "$TAP_REPO/skills/bike-outline/agents/openai.yaml" "$SKILL_DIR/agents/openai.yaml"
+
+# 3) Verify the CLI is installed
+bike-tool help
+```
+
+## Install (Other Methods)
 
 From source:
 
@@ -47,6 +67,8 @@ Homebrew notes (formula update workflow, release guidance): [docs/HOMEBREW.md](d
 ## Codex Skill
 
 This repo includes a companion skill at `skills/bike-outline/`.
+
+If you already followed **Quick Start (Recommended for Codex Users)** above, this is already done.
 
 To install/update that skill in your local Codex skills directory:
 
