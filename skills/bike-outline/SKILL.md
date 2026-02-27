@@ -46,7 +46,7 @@ If unavailable, build/install from:
 ## Core Rules
 
 - Always preserve unknown row attributes (for example `indent`).
-- Always preserve inline rich paragraph markup (`strong`, `span`, `em`, `mark`, `code`).
+- Always preserve inline rich paragraph markup (`strong`, `span`, `em`, `mark`, `code`, `a`).
 - Treat missing `data-type` as generic `item`; do not coerce type unless asked.
 - Use absolute file paths for all commands.
 
@@ -74,7 +74,7 @@ If no open task exists, report that explicitly.
 
 1. Validate input file before editing.
 2. Read structure (`list`) or machine-readable data (`to-json`) as needed.
-3. Make edits via CLI commands (`add`, `done`, `undone`).
+3. Make edits via CLI commands (`add`, `add-link`, `done`, `undone`).
 4. Re-validate after edits.
 5. Confirm backup creation:
    - default: verify `bike-tool backup list "<file>"` includes a new managed backup
@@ -89,6 +89,7 @@ bike-tool to-json "/absolute/path/file.bike"
 bike-tool to-json "/absolute/path/file.bike" --rich-text
 bike-tool add "/absolute/path/file.bike" --text "New row" --type task
 bike-tool add "/absolute/path/file.bike" --text "Child row" --type note --parent-id abc123
+bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type note
 bike-tool done "/absolute/path/file.bike" --id abc123
 bike-tool undone "/absolute/path/file.bike" --id abc123
 bike-tool delete "/absolute/path/file.bike" --id abc123
@@ -102,7 +103,9 @@ bike-tool backup restore "/absolute/path/file.bike" --id "<backup-id>"
 ## Notes
 
 - `to-json` includes each row's `attributes` map, so custom attributes are preserved in output.
+- `to-json` includes `links` when a row contains `<a href="...">` markup.
 - Use `--rich-text` when inline formatting inside `<p>` matters.
 - Some rows may have no `data-type`; treat them as generic `item` rows.
 - Write commands default to `--write-mode coordinated` and support `atomic`/`inplace` for troubleshooting.
 - Write commands default to `--backup-mode managed` (stored outside the source folder); use `--backup-mode inline` only when sidecar `.bak` is explicitly requested.
+- When adding references to files, prefer `add-link` with `file:///absolute/path/...` instead of plain text path rows.

@@ -9,7 +9,7 @@ Use this project when requests involve:
 - validating `.bike` files
 - listing/summarizing rows and tasks
 - exporting `.bike` structure to JSON
-- structured edits (`add`, `done`, `undone`, `delete`)
+- structured edits (`add`, `add-link`, `done`, `undone`, `delete`)
 
 ## First steps for Codex
 
@@ -62,4 +62,5 @@ If `~/.codex/bin/bike-tool` (or `$CODEX_HOME/bin/bike-tool`) is missing, run `sc
 - "Summarize this outline" -> `bike-tool to-json` (optionally `--rich-text`) and summarize rows.
 - "Mark task done/undone" -> `bike-tool done` / `bike-tool undone`.
 - "Add a task/note/heading" -> `bike-tool add`.
+- "Add a file reference link" -> `bike-tool add-link` with a `file:///` URI.
 - "Delete a row" -> `bike-tool delete`.

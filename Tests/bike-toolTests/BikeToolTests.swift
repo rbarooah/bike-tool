@@ -91,6 +91,58 @@ final class BikeToolTests: XCTestCase {
         }
     }
 
+    func testJSONRowsIncludeStructuredLinks() throws {
+        let tempURL = try writeTempBike(contents: """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <html xmlns="http://www.w3.org/1999/xhtml">
+          <head>
+            <meta charset="utf-8"/>
+          </head>
+          <body>
+            <ul>
+              <li id="root" data-type="note">
+                <p><a href="file:///Users/robin/Desktop/example.bike">Example Bike File</a></p>
+              </li>
+            </ul>
+          </body>
+        </html>
+        """)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let bike = try BikeDocument(path: tempURL.path)
+        let rows = try bike.readRows()
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0].links.count, 1)
+        XCTAssertEqual(rows[0].links[0].href, "file:///Users/robin/Desktop/example.bike")
+        XCTAssertEqual(rows[0].links[0].text, "Example Bike File")
+
+        let encoded = try JSONEncoder().encode(rows.map { EncodableRow(from: $0, includeRichText: false) })
+        let json = try XCTUnwrap(String(data: encoded, encoding: .utf8))
+        XCTAssertTrue(json.contains("\"links\""), "JSON should include links when anchor tags exist in row content.")
+        XCTAssertTrue(json.contains("file:\\/\\/\\/Users\\/robin\\/Desktop\\/example.bike"), "JSON should include parsed href values.")
+    }
+
+    func testAddLinkRowCreatesAnchorMarkup() throws {
+        try withIsolatedBackupDirectory { _ in
+            let tempURL = try copyFixtureToTempFile()
+
+            let bike = try BikeDocument(path: tempURL.path)
+            _ = try bike.addLinkRow(
+                href: "file:///Users/robin/Desktop/another-file.bike",
+                text: "another-file.bike",
+                type: "note",
+                parentID: "cOV"
+            )
+            try bike.saveWithBackup()
+
+            let updated = try String(contentsOf: tempURL, encoding: .utf8)
+            XCTAssertTrue(
+                updated.contains("<a href=\"file:///Users/robin/Desktop/another-file.bike\">another-file.bike</a>"),
+                "addLinkRow should create explicit anchor markup in paragraph content."
+            )
+        }
+    }
+
     private func copyFixtureToTempFile() throws -> URL {
         let fixture = fixtureURL()
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -104,6 +156,13 @@ final class BikeToolTests: XCTestCase {
             fatalError("Fixture not found in test bundle.")
         }
         return url
+    }
+
+    private func writeTempBike(contents: String) throws -> URL {
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        let target = tempDir.appendingPathComponent("bike-tool-link-fixture-\(UUID().uuidString).bike")
+        try contents.write(to: target, atomically: true, encoding: .utf8)
+        return target
     }
 
     private func withIsolatedBackupDirectory(_ body: (URL) throws -> Void) throws {

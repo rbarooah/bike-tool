@@ -29,12 +29,18 @@ Quick smoke checks:
 # Default coordinated write
 .build/debug/bike-tool done "/tmp/test.bike" --id someRowId
 
+# Add a link row (file reference)
+.build/debug/bike-tool add-link "/tmp/test.bike" --href "file:///tmp/target.bike" --text "target.bike" --type note
+
 # Explicit alternate modes
 .build/debug/bike-tool done "/tmp/test.bike" --id someRowId --write-mode atomic
 .build/debug/bike-tool done "/tmp/test.bike" --id someRowId --write-mode inplace
 
 # Delete row
 .build/debug/bike-tool delete "/tmp/test.bike" --id someRowId
+
+# Confirm structured link extraction in JSON output
+.build/debug/bike-tool to-json "/tmp/test.bike" | rg '"links"|target.bike'
 
 # Backup tools
 .build/debug/bike-tool backup list "/tmp/test.bike"
@@ -52,5 +58,7 @@ scripts/install.sh
 
 - Keep `.bike` paths absolute in examples and automation prompts.
 - Preserve unknown row attributes and inline paragraph markup.
+- Prefer `add-link` for file references instead of plain text path rows.
+- JSON output includes a `links` field when row paragraphs contain anchor markup.
 - Add regression tests when introducing new write behavior.
 - Default backup mode is managed; use `--backup-mode inline` only when sidecar `.bak` files are explicitly desired.

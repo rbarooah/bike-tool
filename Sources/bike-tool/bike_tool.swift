@@ -22,9 +22,17 @@ struct Row {
     let type: String?
     let text: String
     let richText: String
+    let links: [RowLink]
     let done: String?
     let attributes: [String: String]
     let children: [Row]
+}
+
+struct RowLink: Encodable {
+    let href: String
+    let text: String
+    let title: String?
+    let rel: String?
 }
 
 @main
@@ -56,6 +64,8 @@ struct BikeTool {
             try handleToJSON(args: Array(args.dropFirst()))
         case "add":
             try handleAdd(args: Array(args.dropFirst()))
+        case "add-link":
+            try handleAddLink(args: Array(args.dropFirst()))
         case "done":
             try handleDone(args: Array(args.dropFirst()), markDone: true)
         case "undone":
@@ -79,6 +89,7 @@ struct BikeTool {
           bike-tool list <file.bike>
           bike-tool to-json <file.bike> [--rich-text]
           bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool add-link <file.bike> --href "<uri>" [--text "<label>"] [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool done <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool undone <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool delete <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
@@ -144,6 +155,29 @@ struct BikeTool {
         let newID = try bike.addRow(text: text, type: type, parentID: parentID)
         try bike.saveWithBackup(writeMode: writeMode, backupMode: backupMode)
         print("Added row id=\(newID)")
+    }
+
+    static func handleAddLink(args: [String]) throws {
+        guard let file = args.first else {
+            throw CLIError(message: "Usage: bike-tool add-link <file.bike> --href \"<uri>\" [--text \"<label>\"] [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
+        }
+        let flags = try parseFlags(Array(args.dropFirst()))
+        guard let href = flags["href"] else {
+            throw CLIError(message: "Missing required flag: --href")
+        }
+        let writeMode = try parseWriteMode(flags: flags)
+        let backupMode = try parseBackupMode(flags: flags)
+        let parentID = flags["parent-id"]
+        let type = flags["type"] ?? "note"
+        guard ["task", "note", "heading"].contains(type) else {
+            throw CLIError(message: "Invalid --type '\(type)'. Use task|note|heading.")
+        }
+
+        let label = flags["text"] ?? href
+        let bike = try BikeDocument(path: file)
+        let newID = try bike.addLinkRow(href: href, text: label, type: type, parentID: parentID)
+        try bike.saveWithBackup(writeMode: writeMode, backupMode: backupMode)
+        print("Added link row id=\(newID)")
     }
 
     static func handleDone(args: [String], markDone: Bool) throws {
@@ -321,14 +355,32 @@ final class BikeDocument {
     }
 
     func addRow(text: String, type: String, parentID: String?) throws -> String {
+        let p = XMLElement(name: "p")
+        p.stringValue = text
+        return try addRow(type: type, paragraph: p, parentID: parentID)
+    }
+
+    func addLinkRow(href: String, text: String, type: String, parentID: String?) throws -> String {
+        let normalizedHref = href.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedHref.isEmpty else {
+            throw CLIError(message: "--href must not be empty.")
+        }
+
+        let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let p = XMLElement(name: "p")
+        let a = XMLElement(name: "a")
+        a.addAttribute(XMLNode.attribute(withName: "href", stringValue: normalizedHref) as! XMLNode)
+        a.stringValue = normalizedText.isEmpty ? normalizedHref : normalizedText
+        p.addChild(a)
+        return try addRow(type: type, paragraph: p, parentID: parentID)
+    }
+
+    private func addRow(type: String, paragraph: XMLElement, parentID: String?) throws -> String {
         let li = XMLElement(name: "li")
         let id = try generateUniqueID()
         li.addAttribute(XMLNode.attribute(withName: "id", stringValue: id) as! XMLNode)
         li.addAttribute(XMLNode.attribute(withName: "data-type", stringValue: type) as! XMLNode)
-
-        let p = XMLElement(name: "p")
-        p.stringValue = text
-        li.addChild(p)
+        li.addChild(paragraph)
 
         if let parentID {
             guard let parent = findLI(id: parentID) else {
@@ -467,6 +519,7 @@ final class BikeDocument {
         let p = firstChildElement(named: "p", in: li)
         let text = p?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let richText = p.map(innerXML(of:)) ?? ""
+        let links = p.map(extractLinks(from:)) ?? []
 
         var children: [Row] = []
         if let childUL = firstChildElement(named: "ul", in: li) {
@@ -477,6 +530,7 @@ final class BikeDocument {
             type: type,
             text: text,
             richText: richText,
+            links: links,
             done: done,
             attributes: attrs,
             children: children
@@ -524,6 +578,40 @@ final class BikeDocument {
     private func innerXML(of element: XMLElement) -> String {
         let children = element.children ?? []
         return children.map { $0.xmlString(options: []) }.joined()
+    }
+
+    private func extractLinks(from paragraph: XMLElement) -> [RowLink] {
+        collectAnchorElements(in: paragraph).compactMap { anchor in
+            guard let href = anchor.attribute(forName: "href")?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !href.isEmpty
+            else {
+                return nil
+            }
+            let text = anchor.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? href
+            let title = anchor.attribute(forName: "title")?.stringValue
+            let rel = anchor.attribute(forName: "rel")?.stringValue
+            return RowLink(href: href, text: text, title: title, rel: rel)
+        }
+    }
+
+    private func collectAnchorElements(in element: XMLElement) -> [XMLElement] {
+        var anchors: [XMLElement] = []
+        for child in element.children ?? [] {
+            guard let childElement = child as? XMLElement else { continue }
+            if isElement(childElement, named: "a") {
+                anchors.append(childElement)
+            }
+            anchors.append(contentsOf: collectAnchorElements(in: childElement))
+        }
+        return anchors
+    }
+
+    private func isElement(_ element: XMLElement, named expectedName: String) -> Bool {
+        if let localName = element.localName {
+            return localName == expectedName
+        }
+        guard let name = element.name else { return false }
+        return name == expectedName || name.split(separator: ":").last == Substring(expectedName)
     }
 
     private static func iso8601Now() -> String {
@@ -755,6 +843,7 @@ struct EncodableRow: Encodable {
     let type: String?
     let text: String
     let richText: String?
+    let links: [RowLink]?
     let done: String?
     let attributes: [String: String]
     let children: [EncodableRow]
@@ -764,6 +853,7 @@ struct EncodableRow: Encodable {
         type = row.type
         text = row.text
         richText = includeRichText ? row.richText : nil
+        links = row.links.isEmpty ? nil : row.links
         done = row.done
         attributes = row.attributes
         children = row.children.map { EncodableRow(from: $0, includeRichText: includeRichText) }
