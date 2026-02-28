@@ -9,7 +9,7 @@ A Swift CLI for reading and safely editing [Bike.app](https://www.hogbaysoftware
 - Validate `.bike` XML structure
 - List outline rows with type, id, and done state
 - Export rows to JSON (`--rich-text` optional, `links` included when present)
-- Add rows (`task`, `note`, `heading`)
+- Add rows (`item`, `task`, `note`, `heading`, `quote`, `code`, `ordered`, `unordered`)
 - Add linked rows with explicit `<a href="...">` content
 - Mark rows done/undone by id
 - Delete rows by id
@@ -116,12 +116,13 @@ bike-tool validate "/absolute/path/file.bike"
 bike-tool list "/absolute/path/file.bike"
 bike-tool to-json "/absolute/path/file.bike"
 bike-tool to-json "/absolute/path/file.bike" --rich-text
+bike-tool add "/absolute/path/file.bike" --text "Normal body row" --type item
 bike-tool add "/absolute/path/file.bike" --text "New task" --type task
-bike-tool add "/absolute/path/file.bike" --text "Child note" --type note --parent-id abc123 --write-mode coordinated
 bike-tool add "/absolute/path/file.bike" --text "Top row" --type heading --at-start
-bike-tool add "/absolute/path/file.bike" --text "Before row" --type note --before-id abc123
-bike-tool add "/absolute/path/file.bike" --text "After row" --type note --after-id abc123
-bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type note
+bike-tool add "/absolute/path/file.bike" --text "Quoted row" --type quote
+bike-tool add "/absolute/path/file.bike" --text "Before row" --type item --before-id abc123
+bike-tool add "/absolute/path/file.bike" --text "After row" --type item --after-id abc123
+bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type item
 bike-tool done "/absolute/path/file.bike" --id abc123 --write-mode atomic
 bike-tool undone "/absolute/path/file.bike" --id abc123 --write-mode inplace
 bike-tool delete "/absolute/path/file.bike" --id abc123
@@ -137,6 +138,7 @@ bike-tool backup restore "/absolute/path/file.bike" --id "<backup-id>"
 - `--rich-text` includes paragraph inner XML in `richText`.
 - `text` always provides plain text.
 - Rows with `<a href="...">` markup include a parsed `links` array (`href`, `text`, optional `title`, optional `rel`).
+- `add` and `add-link` default to `item` (untyped body rows); use `note` for annotations.
 
 ## Safety Model
 
@@ -168,6 +170,8 @@ Optional write modes:
 ## Development
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+Row type semantics and planned/default behavior are defined in [docs/TYPE_POLICY.md](docs/TYPE_POLICY.md).
 
 ## Agent Instructions
 

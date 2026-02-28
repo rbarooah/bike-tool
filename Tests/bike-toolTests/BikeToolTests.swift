@@ -143,6 +143,96 @@ final class BikeToolTests: XCTestCase {
         }
     }
 
+    func testParseAddTypeDefaultsToItemAndSupportsBodyAlias() throws {
+        XCTAssertEqual(try BikeTool.parseAddType(rawValue: nil, defaultType: "item"), "item")
+        XCTAssertEqual(try BikeTool.parseAddType(rawValue: "body", defaultType: "item"), "item")
+        XCTAssertEqual(try BikeTool.parseAddType(rawValue: "quote", defaultType: "item"), "quote")
+
+        XCTAssertThrowsError(try BikeTool.parseAddType(rawValue: "unknown", defaultType: "item")) { error in
+            XCTAssertTrue("\(error)".contains("Invalid --type"))
+        }
+    }
+
+    func testAddItemAndBodyRowsWriteWithoutDataTypeAttribute() throws {
+        try withIsolatedBackupDirectory { _ in
+            let tempURL = try writePlacementFixture()
+            let bike = try BikeDocument(path: tempURL.path)
+
+            let itemID = try bike.addRow(text: "Plain body row", type: "item", parentID: nil)
+            let bodyID = try bike.addRow(text: "Body alias row", type: "body", parentID: nil)
+            try bike.saveWithBackup(backupMode: .none)
+
+            let rows = try BikeDocument(path: tempURL.path).readRows()
+            let itemRow = try XCTUnwrap(rows.first(where: { $0.id == itemID }))
+            let bodyRow = try XCTUnwrap(rows.first(where: { $0.id == bodyID }))
+            XCTAssertNil(itemRow.type, "Untyped item rows should not set data-type.")
+            XCTAssertNil(bodyRow.type, "Body alias should map to untyped item rows.")
+
+            let content = try String(contentsOf: tempURL, encoding: .utf8)
+            XCTAssertTrue(content.contains("<li id=\"\(itemID)\">"))
+            XCTAssertTrue(content.contains("<li id=\"\(bodyID)\">"))
+            XCTAssertFalse(content.contains("<li id=\"\(itemID)\" data-type="))
+            XCTAssertFalse(content.contains("<li id=\"\(bodyID)\" data-type="))
+        }
+    }
+
+    func testHandleAddDefaultsToItemType() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleAdd(args: [
+            tempURL.path,
+            "--text", "Default add body row",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let inserted = try XCTUnwrap(rows.first(where: { $0.text == "Default add body row" }))
+        XCTAssertNil(inserted.type, "add should default to untyped item rows.")
+    }
+
+    func testHandleAddLinkDefaultsToItemType() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleAddLink(args: [
+            tempURL.path,
+            "--href", "file:///tmp/default-item-link.bike",
+            "--text", "Default item link",
+            "--parent-id", "rootB",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let rootB = try XCTUnwrap(rows.first(where: { $0.id == "rootB" }))
+        let inserted = try XCTUnwrap(rootB.children.first(where: { $0.text == "Default item link" }))
+        XCTAssertNil(inserted.type, "add-link should default to untyped item rows.")
+        XCTAssertEqual(inserted.links.first?.href, "file:///tmp/default-item-link.bike")
+    }
+
+    func testHandleAddAcceptsExtendedBikeTypes() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let types = ["quote", "code", "ordered", "unordered"]
+        for type in types {
+            try BikeTool.handleAdd(args: [
+                tempURL.path,
+                "--text", "Type row \(type)",
+                "--type", type,
+                "--parent-id", "rootB",
+                "--backup-mode", "none",
+            ])
+        }
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let rootB = try XCTUnwrap(rows.first(where: { $0.id == "rootB" }))
+        for type in types {
+            let row = try XCTUnwrap(rootB.children.first(where: { $0.text == "Type row \(type)" }))
+            XCTAssertEqual(row.type, type)
+        }
+    }
+
     func testAddAtStartInsertsRootRowAtTop() throws {
         let tempURL = try writePlacementFixture()
         defer { try? FileManager.default.removeItem(at: tempURL) }

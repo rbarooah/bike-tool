@@ -30,7 +30,7 @@ Quick smoke checks:
 .build/debug/bike-tool done "/tmp/test.bike" --id someRowId
 
 # Add a link row (file reference)
-.build/debug/bike-tool add-link "/tmp/test.bike" --href "file:///tmp/target.bike" --text "target.bike" --type note
+.build/debug/bike-tool add-link "/tmp/test.bike" --href "file:///tmp/target.bike" --text "target.bike" --type item
 
 # Explicit alternate modes
 .build/debug/bike-tool done "/tmp/test.bike" --id someRowId --write-mode atomic
@@ -41,8 +41,9 @@ Quick smoke checks:
 
 # Position-aware add
 .build/debug/bike-tool add "/tmp/test.bike" --text "Top task" --type task --at-start
-.build/debug/bike-tool add "/tmp/test.bike" --text "Insert before row" --type note --before-id someRowId
-.build/debug/bike-tool add "/tmp/test.bike" --text "Insert after row" --type note --after-id someRowId
+.build/debug/bike-tool add "/tmp/test.bike" --text "Insert before row" --type item --before-id someRowId
+.build/debug/bike-tool add "/tmp/test.bike" --text "Insert after row" --type item --after-id someRowId
+.build/debug/bike-tool add "/tmp/test.bike" --text "Quoted block" --type quote
 
 # Confirm structured link extraction in JSON output
 .build/debug/bike-tool to-json "/tmp/test.bike" | rg '"links"|target.bike'
@@ -63,6 +64,7 @@ scripts/install.sh
 
 - Keep `.bike` paths absolute in examples and automation prompts.
 - Preserve unknown row attributes and inline paragraph markup.
+- Default to `item` for normal body text; use `note` for annotation-style content.
 - Prefer `add-link` for file references instead of plain text path rows.
 - JSON output includes a `links` field when row paragraphs contain anchor markup.
 - Add regression tests when introducing new write behavior.

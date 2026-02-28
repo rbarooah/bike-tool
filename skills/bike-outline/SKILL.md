@@ -13,7 +13,8 @@ Use Bike outlines as structured planning artifacts:
 
 - `heading`: section/grouping focus
 - `task`: actionable work item
-- `note` or untyped `item`: supporting context, prompts, rationale, or placeholders
+- untyped `item`: normal body prose, summaries, and references
+- `note`: annotation-style asides or meta commentary
 
 Prioritize task-state clarity while preserving document fidelity.
 
@@ -49,6 +50,15 @@ If unavailable, build/install from:
 - Always preserve inline rich paragraph markup (`strong`, `span`, `em`, `mark`, `code`, `a`).
 - Treat missing `data-type` as generic `item`; do not coerce type unless asked.
 - Use absolute file paths for all commands.
+- Follow row type intent guidance from `docs/TYPE_POLICY.md` in the repository.
+
+## Type Selection Policy
+
+- Default to `item` for normal prose, summaries, references, and narrative body text.
+- Use `note` only for annotation-style text (asides, footnotes, meta commentary).
+- Use `task` only for actionable checklist items.
+- Use `heading` for section/group labels.
+- Use `quote`, `code`, `ordered`, or `unordered` only when explicitly requested by user intent.
 
 ## Enforcement Policy
 
@@ -87,12 +97,13 @@ bike-tool validate "/absolute/path/file.bike"
 bike-tool list "/absolute/path/file.bike"
 bike-tool to-json "/absolute/path/file.bike"
 bike-tool to-json "/absolute/path/file.bike" --rich-text
-bike-tool add "/absolute/path/file.bike" --text "New row" --type task
-bike-tool add "/absolute/path/file.bike" --text "Child row" --type note --parent-id abc123
+bike-tool add "/absolute/path/file.bike" --text "New body row" --type item
+bike-tool add "/absolute/path/file.bike" --text "New task row" --type task
 bike-tool add "/absolute/path/file.bike" --text "Top row" --type heading --at-start
-bike-tool add "/absolute/path/file.bike" --text "Before row" --type note --before-id abc123
-bike-tool add "/absolute/path/file.bike" --text "After row" --type note --after-id abc123
-bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type note
+bike-tool add "/absolute/path/file.bike" --text "Before row" --type item --before-id abc123
+bike-tool add "/absolute/path/file.bike" --text "After row" --type item --after-id abc123
+bike-tool add "/absolute/path/file.bike" --text "Quoted block" --type quote
+bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type item
 bike-tool done "/absolute/path/file.bike" --id abc123
 bike-tool undone "/absolute/path/file.bike" --id abc123
 bike-tool delete "/absolute/path/file.bike" --id abc123
@@ -109,6 +120,7 @@ bike-tool backup restore "/absolute/path/file.bike" --id "<backup-id>"
 - `to-json` includes `links` when a row contains `<a href="...">` markup.
 - Use `--rich-text` when inline formatting inside `<p>` matters.
 - Some rows may have no `data-type`; treat them as generic `item` rows.
+- `add` and `add-link` default to `item`; use `note` only when annotation styling is explicitly desired.
 - Write commands default to `--write-mode coordinated` and support `atomic`/`inplace` for troubleshooting.
 - Write commands default to `--backup-mode managed` (stored outside the source folder); use `--backup-mode inline` only when sidecar `.bak` is explicitly requested.
 - When adding references to files, prefer `add-link` with `file:///absolute/path/...` instead of plain text path rows.

@@ -61,6 +61,8 @@ If `~/.codex/bin/bike-tool` (or `$CODEX_HOME/bin/bike-tool`) is missing, run `sc
 - "What is next?" -> `bike-tool list` or `bike-tool to-json`, then pick first open `task` in outline order.
 - "Summarize this outline" -> `bike-tool to-json` (optionally `--rich-text`) and summarize rows.
 - "Mark task done/undone" -> `bike-tool done` / `bike-tool undone`.
-- "Add a task/note/heading" -> `bike-tool add`.
+- "Add normal body text" -> `bike-tool add --type item` (or rely on default `item`).
+- "Add a task/note/heading" -> `bike-tool add --type task|note|heading`.
+- "Add quote/code/list row" -> `bike-tool add --type quote|code|ordered|unordered`.
 - "Add a file reference link" -> `bike-tool add-link` with a `file:///` URI.
 - "Delete a row" -> `bike-tool delete`.

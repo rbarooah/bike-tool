@@ -44,6 +44,18 @@ struct RowLink: Encodable {
 
 @main
 struct BikeTool {
+    static let addTypeUsage = "item|body|task|note|heading|quote|code|ordered|unordered"
+    static let canonicalAddTypes: Set<String> = [
+        "item",
+        "task",
+        "note",
+        "heading",
+        "quote",
+        "code",
+        "ordered",
+        "unordered",
+    ]
+
     static func main() {
         do {
             try run()
@@ -95,8 +107,8 @@ struct BikeTool {
           bike-tool validate <file.bike>
           bike-tool list <file.bike>
           bike-tool to-json <file.bike> [--rich-text]
-          bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type task|note|heading] [--before-id <row-id> | --after-id <row-id> | --at-start | --at-end] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
-          bike-tool add-link <file.bike> --href "<uri>" [--text "<label>"] [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type \(addTypeUsage)] [--before-id <row-id> | --after-id <row-id> | --at-start | --at-end] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool add-link <file.bike> --href "<uri>" [--text "<label>"] [--parent-id <id>] [--type \(addTypeUsage)] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool done <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool undone <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool delete <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
@@ -144,7 +156,7 @@ struct BikeTool {
 
     static func handleAdd(args: [String]) throws {
         guard let file = args.first else {
-            throw CLIError(message: "Usage: bike-tool add <file.bike> --text \"<text>\" [--parent-id <id>] [--type task|note|heading] [--before-id <row-id> | --after-id <row-id> | --at-start | --at-end] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
+            throw CLIError(message: "Usage: bike-tool add <file.bike> --text \"<text>\" [--parent-id <id>] [--type \(addTypeUsage)] [--before-id <row-id> | --after-id <row-id> | --at-start | --at-end] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
         }
         let flags = try parseFlags(Array(args.dropFirst()))
         guard let text = flags["text"] else {
@@ -154,10 +166,7 @@ struct BikeTool {
         let backupMode = try parseBackupMode(flags: flags)
         let parentID = flags["parent-id"]
         let placement = try parseAddPlacement(flags: flags)
-        let type = flags["type"] ?? "task"
-        guard ["task", "note", "heading"].contains(type) else {
-            throw CLIError(message: "Invalid --type '\(type)'. Use task|note|heading.")
-        }
+        let type = try parseAddType(rawValue: flags["type"], defaultType: "item")
 
         let bike = try BikeDocument(path: file)
         let newID = try bike.addRow(text: text, type: type, parentID: parentID, placement: placement)
@@ -167,7 +176,7 @@ struct BikeTool {
 
     static func handleAddLink(args: [String]) throws {
         guard let file = args.first else {
-            throw CLIError(message: "Usage: bike-tool add-link <file.bike> --href \"<uri>\" [--text \"<label>\"] [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
+            throw CLIError(message: "Usage: bike-tool add-link <file.bike> --href \"<uri>\" [--text \"<label>\"] [--parent-id <id>] [--type \(addTypeUsage)] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
         }
         let flags = try parseFlags(Array(args.dropFirst()))
         guard let href = flags["href"] else {
@@ -176,10 +185,7 @@ struct BikeTool {
         let writeMode = try parseWriteMode(flags: flags)
         let backupMode = try parseBackupMode(flags: flags)
         let parentID = flags["parent-id"]
-        let type = flags["type"] ?? "note"
-        guard ["task", "note", "heading"].contains(type) else {
-            throw CLIError(message: "Invalid --type '\(type)'. Use task|note|heading.")
-        }
+        let type = try parseAddType(rawValue: flags["type"], defaultType: "item")
 
         let label = flags["text"] ?? href
         let bike = try BikeDocument(path: file)
@@ -342,6 +348,25 @@ struct BikeTool {
         return .atEnd
     }
 
+    static func parseAddType(rawValue: String?, defaultType: String) throws -> String {
+        let candidate = (rawValue ?? defaultType)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard !candidate.isEmpty else {
+            throw CLIError(message: "Invalid --type ''. Use \(addTypeUsage).")
+        }
+
+        if candidate == "body" {
+            return "item"
+        }
+
+        guard canonicalAddTypes.contains(candidate) else {
+            throw CLIError(message: "Invalid --type '\(candidate)'. Use \(addTypeUsage).")
+        }
+        return candidate
+    }
+
     static func parsePositiveIntFlag(_ rawValue: String?, name: String, defaultValue: Int) throws -> Int {
         guard let rawValue else { return defaultValue }
         guard let parsed = Int(rawValue), parsed > 0 else {
@@ -424,10 +449,17 @@ final class BikeDocument {
     }
 
     private func addRow(type: String, paragraph: XMLElement, parentID: String?, placement: AddPlacement) throws -> String {
+        let normalizedType = Self.normalizeStoredType(type)
+        guard !normalizedType.isEmpty else {
+            throw CLIError(message: "Row type must not be empty.")
+        }
+
         let li = XMLElement(name: "li")
         let id = try generateUniqueID()
         li.addAttribute(XMLNode.attribute(withName: "id", stringValue: id) as! XMLNode)
-        li.addAttribute(XMLNode.attribute(withName: "data-type", stringValue: type) as! XMLNode)
+        if normalizedType != "item" {
+            li.addAttribute(XMLNode.attribute(withName: "data-type", stringValue: normalizedType) as! XMLNode)
+        }
         li.addChild(paragraph)
 
         switch placement {
@@ -757,6 +789,17 @@ final class BikeDocument {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
         return formatter.string(from: Date())
+    }
+
+    private static func normalizeStoredType(_ rawType: String) -> String {
+        let trimmed = rawType.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.caseInsensitiveCompare("body") == .orderedSame {
+            return "item"
+        }
+        if trimmed.caseInsensitiveCompare("item") == .orderedSame {
+            return "item"
+        }
+        return trimmed
     }
 }
 

@@ -41,7 +41,7 @@ bike-tool help
 bike-tool validate "/absolute/path/file.bike"
 bike-tool list "/absolute/path/file.bike"
 bike-tool to-json "/absolute/path/file.bike"
-bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type note
+bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type item
 ```
 
 ## Notes
@@ -49,3 +49,4 @@ bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/targ
 - `bike-tool` preserves unknown row attributes and inline rich-text markup.
 - Use `to-json --rich-text` when paragraph markup detail is needed.
 - JSON output includes `links` when rows contain anchor tags.
+- `add` and `add-link` default to `item` (normal body text); reserve `note` for annotation-style content.
