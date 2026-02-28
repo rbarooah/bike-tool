@@ -89,6 +89,9 @@ bike-tool to-json "/absolute/path/file.bike"
 bike-tool to-json "/absolute/path/file.bike" --rich-text
 bike-tool add "/absolute/path/file.bike" --text "New row" --type task
 bike-tool add "/absolute/path/file.bike" --text "Child row" --type note --parent-id abc123
+bike-tool add "/absolute/path/file.bike" --text "Top row" --type heading --at-start
+bike-tool add "/absolute/path/file.bike" --text "Before row" --type note --before-id abc123
+bike-tool add "/absolute/path/file.bike" --text "After row" --type note --after-id abc123
 bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type note
 bike-tool done "/absolute/path/file.bike" --id abc123
 bike-tool undone "/absolute/path/file.bike" --id abc123

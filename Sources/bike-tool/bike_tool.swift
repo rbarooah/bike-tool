@@ -17,6 +17,13 @@ enum BackupMode: String {
     case none
 }
 
+enum AddPlacement {
+    case atEnd
+    case atStart
+    case before(id: String)
+    case after(id: String)
+}
+
 struct Row {
     let id: String
     let type: String?
@@ -88,7 +95,7 @@ struct BikeTool {
           bike-tool validate <file.bike>
           bike-tool list <file.bike>
           bike-tool to-json <file.bike> [--rich-text]
-          bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type task|note|heading] [--before-id <row-id> | --after-id <row-id> | --at-start | --at-end] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool add-link <file.bike> --href "<uri>" [--text "<label>"] [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool done <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool undone <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
@@ -137,7 +144,7 @@ struct BikeTool {
 
     static func handleAdd(args: [String]) throws {
         guard let file = args.first else {
-            throw CLIError(message: "Usage: bike-tool add <file.bike> --text \"<text>\" [--parent-id <id>] [--type task|note|heading] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
+            throw CLIError(message: "Usage: bike-tool add <file.bike> --text \"<text>\" [--parent-id <id>] [--type task|note|heading] [--before-id <row-id> | --after-id <row-id> | --at-start | --at-end] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
         }
         let flags = try parseFlags(Array(args.dropFirst()))
         guard let text = flags["text"] else {
@@ -146,13 +153,14 @@ struct BikeTool {
         let writeMode = try parseWriteMode(flags: flags)
         let backupMode = try parseBackupMode(flags: flags)
         let parentID = flags["parent-id"]
+        let placement = try parseAddPlacement(flags: flags)
         let type = flags["type"] ?? "task"
         guard ["task", "note", "heading"].contains(type) else {
             throw CLIError(message: "Invalid --type '\(type)'. Use task|note|heading.")
         }
 
         let bike = try BikeDocument(path: file)
-        let newID = try bike.addRow(text: text, type: type, parentID: parentID)
+        let newID = try bike.addRow(text: text, type: type, parentID: parentID, placement: placement)
         try bike.saveWithBackup(writeMode: writeMode, backupMode: backupMode)
         print("Added row id=\(newID)")
     }
@@ -294,6 +302,46 @@ struct BikeTool {
         return mode
     }
 
+    static func parseAddPlacement(flags: [String: String]) throws -> AddPlacement {
+        let beforeID = flags["before-id"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let afterID = flags["after-id"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let atStartValue = flags["at-start"]
+        let atEndValue = flags["at-end"]
+
+        if let beforeID, beforeID.isEmpty {
+            throw CLIError(message: "Missing value for --before-id.")
+        }
+        if let afterID, afterID.isEmpty {
+            throw CLIError(message: "Missing value for --after-id.")
+        }
+        if let atStartValue, atStartValue != "true" {
+            throw CLIError(message: "--at-start does not accept a value.")
+        }
+        if let atEndValue, atEndValue != "true" {
+            throw CLIError(message: "--at-end does not accept a value.")
+        }
+
+        var setCount = 0
+        if beforeID != nil { setCount += 1 }
+        if afterID != nil { setCount += 1 }
+        if atStartValue != nil { setCount += 1 }
+        if atEndValue != nil { setCount += 1 }
+        if setCount > 1 {
+            throw CLIError(message: "Conflicting placement flags. Use only one of --before-id, --after-id, --at-start, --at-end.")
+        }
+
+        if let beforeID {
+            return .before(id: beforeID)
+        }
+        if let afterID {
+            return .after(id: afterID)
+        }
+        if atStartValue != nil {
+            return .atStart
+        }
+        return .atEnd
+    }
+
     static func parsePositiveIntFlag(_ rawValue: String?, name: String, defaultValue: Int) throws -> Int {
         guard let rawValue else { return defaultValue }
         guard let parsed = Int(rawValue), parsed > 0 else {
@@ -354,13 +402,13 @@ final class BikeDocument {
         return parseRows(in: rootUL)
     }
 
-    func addRow(text: String, type: String, parentID: String?) throws -> String {
+    func addRow(text: String, type: String, parentID: String?, placement: AddPlacement = .atEnd) throws -> String {
         let p = XMLElement(name: "p")
         p.stringValue = text
-        return try addRow(type: type, paragraph: p, parentID: parentID)
+        return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
     }
 
-    func addLinkRow(href: String, text: String, type: String, parentID: String?) throws -> String {
+    func addLinkRow(href: String, text: String, type: String, parentID: String?, placement: AddPlacement = .atEnd) throws -> String {
         let normalizedHref = href.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedHref.isEmpty else {
             throw CLIError(message: "--href must not be empty.")
@@ -372,30 +420,83 @@ final class BikeDocument {
         a.addAttribute(XMLNode.attribute(withName: "href", stringValue: normalizedHref) as! XMLNode)
         a.stringValue = normalizedText.isEmpty ? normalizedHref : normalizedText
         p.addChild(a)
-        return try addRow(type: type, paragraph: p, parentID: parentID)
+        return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
     }
 
-    private func addRow(type: String, paragraph: XMLElement, parentID: String?) throws -> String {
+    private func addRow(type: String, paragraph: XMLElement, parentID: String?, placement: AddPlacement) throws -> String {
         let li = XMLElement(name: "li")
         let id = try generateUniqueID()
         li.addAttribute(XMLNode.attribute(withName: "id", stringValue: id) as! XMLNode)
         li.addAttribute(XMLNode.attribute(withName: "data-type", stringValue: type) as! XMLNode)
         li.addChild(paragraph)
 
-        if let parentID {
-            guard let parent = findLI(id: parentID) else {
-                throw CLIError(message: "Parent id not found: \(parentID)")
-            }
-            if let childUL = firstChildElement(named: "ul", in: parent) {
-                childUL.addChild(li)
+        switch placement {
+        case .atEnd:
+            if let parentID {
+                guard let parent = findLI(id: parentID) else {
+                    throw CLIError(message: "Parent id not found: \(parentID)")
+                }
+                if let childUL = firstChildElement(named: "ul", in: parent) {
+                    childUL.addChild(li)
+                } else {
+                    let newUL = XMLElement(name: "ul")
+                    newUL.addChild(li)
+                    parent.addChild(newUL)
+                }
             } else {
-                let newUL = XMLElement(name: "ul")
-                newUL.addChild(li)
-                parent.addChild(newUL)
+                let rootUL = try topUL()
+                rootUL.addChild(li)
             }
-        } else {
-            let rootUL = try topUL()
-            rootUL.addChild(li)
+        case .atStart:
+            if let parentID {
+                guard let parent = findLI(id: parentID) else {
+                    throw CLIError(message: "Parent id not found: \(parentID)")
+                }
+                if let childUL = firstChildElement(named: "ul", in: parent) {
+                    let startIndex = firstListItemIndex(in: childUL)
+                    childUL.insertChild(li, at: startIndex)
+                } else {
+                    let newUL = XMLElement(name: "ul")
+                    newUL.addChild(li)
+                    parent.addChild(newUL)
+                }
+            } else {
+                let rootUL = try topUL()
+                let startIndex = firstListItemIndex(in: rootUL)
+                rootUL.insertChild(li, at: startIndex)
+            }
+        case .before(let targetID), .after(let targetID):
+            guard let target = findLI(id: targetID) else {
+                throw CLIError(message: "Target id not found: \(targetID)")
+            }
+            guard let siblingsUL = target.parent as? XMLElement, siblingsUL.name == "ul" else {
+                throw CLIError(message: "Invalid Bike structure near target id=\(targetID).")
+            }
+
+            let inferredParentID = try inferredParentRowID(forSiblingsUL: siblingsUL)
+            if let parentID {
+                if let inferredParentID {
+                    guard parentID == inferredParentID else {
+                        throw CLIError(message: "Parent mismatch for target id=\(targetID): --parent-id \(parentID) does not match inferred parent \(inferredParentID).")
+                    }
+                } else {
+                    throw CLIError(message: "Parent mismatch for target id=\(targetID): target row is at root, so omit --parent-id.")
+                }
+            }
+
+            guard let targetIndex = listItemIndex(of: target, in: siblingsUL) else {
+                throw CLIError(message: "Invalid Bike structure near target id=\(targetID).")
+            }
+            let insertionIndex: Int
+            switch placement {
+            case .before:
+                insertionIndex = targetIndex
+            case .after:
+                insertionIndex = targetIndex + 1
+            default:
+                insertionIndex = targetIndex
+            }
+            siblingsUL.insertChild(li, at: insertionIndex)
         }
         return id
     }
@@ -553,6 +654,42 @@ final class BikeDocument {
     private func generateID() -> String {
         let chars = Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
         return String((0..<6).map { _ in chars.randomElement()! })
+    }
+
+    private func firstListItemIndex(in ul: XMLElement) -> Int {
+        guard let children = ul.children else { return 0 }
+        for (index, child) in children.enumerated() {
+            guard let childElement = child as? XMLElement else { continue }
+            if childElement.name == "li" {
+                return index
+            }
+        }
+        return children.count
+    }
+
+    private func listItemIndex(of target: XMLElement, in ul: XMLElement) -> Int? {
+        guard let children = ul.children else { return nil }
+        for (index, child) in children.enumerated() {
+            guard let childElement = child as? XMLElement else { continue }
+            if childElement === target {
+                return index
+            }
+        }
+        return nil
+    }
+
+    private func inferredParentRowID(forSiblingsUL ul: XMLElement) throws -> String? {
+        let rootUL = try topUL()
+        if ul === rootUL {
+            return nil
+        }
+        guard let parentLI = ul.parent as? XMLElement, parentLI.name == "li" else {
+            throw CLIError(message: "Invalid Bike structure. Expected nested rows under li/ul.")
+        }
+        guard let parentID = parentLI.attribute(forName: "id")?.stringValue, !parentID.isEmpty else {
+            throw CLIError(message: "Invalid Bike structure. Parent row is missing id.")
+        }
+        return parentID
     }
 
     private func generateUniqueID(maxAttempts: Int = 100) throws -> String {

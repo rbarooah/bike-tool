@@ -143,6 +143,145 @@ final class BikeToolTests: XCTestCase {
         }
     }
 
+    func testAddAtStartInsertsRootRowAtTop() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleAdd(args: [
+            tempURL.path,
+            "--text", "Transcript: newest entry",
+            "--type", "heading",
+            "--at-start",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        XCTAssertEqual(rows.first?.text, "Transcript: newest entry")
+        XCTAssertEqual(rows.dropFirst().first?.id, "rootA")
+    }
+
+    func testAddBeforeIDInsertsBeforeRootTarget() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleAdd(args: [
+            tempURL.path,
+            "--text", "Inserted before first root row",
+            "--type", "note",
+            "--before-id", "rootA",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        XCTAssertEqual(rows.first?.text, "Inserted before first root row")
+        XCTAssertEqual(rows.dropFirst().first?.id, "rootA")
+    }
+
+    func testAddAfterIDInsertsAfterKnownRow() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleAdd(args: [
+            tempURL.path,
+            "--text", "Inserted after childA",
+            "--type", "note",
+            "--after-id", "childA",
+            "--parent-id", "rootB",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let rootB = try XCTUnwrap(rows.first(where: { $0.id == "rootB" }))
+        XCTAssertEqual(rootB.children.map(\.text), ["Child A", "Inserted after childA", "Child B"])
+    }
+
+    func testAddAtStartWithParentInsertsAsFirstChild() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleAdd(args: [
+            tempURL.path,
+            "--text", "First child now",
+            "--type", "task",
+            "--parent-id", "rootB",
+            "--at-start",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let rootB = try XCTUnwrap(rows.first(where: { $0.id == "rootB" }))
+        XCTAssertEqual(rootB.children.first?.text, "First child now")
+    }
+
+    func testPositionedInsertPreservesUntouchedRowsAndMetadata() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let beforeRows = try BikeDocument(path: tempURL.path).readRows()
+        let beforeRootA = try XCTUnwrap(beforeRows.first(where: { $0.id == "rootA" }))
+        let beforeChildA = try XCTUnwrap(beforeRows.first(where: { $0.id == "rootB" })?.children.first(where: { $0.id == "childA" }))
+
+        try BikeTool.handleAdd(args: [
+            tempURL.path,
+            "--text", "Inserted after childA",
+            "--type", "note",
+            "--after-id", "childA",
+            "--backup-mode", "none",
+        ])
+
+        let afterRows = try BikeDocument(path: tempURL.path).readRows()
+        XCTAssertEqual(afterRows.map(\.id), ["rootA", "rootB", "rootC"])
+
+        let afterRootA = try XCTUnwrap(afterRows.first(where: { $0.id == "rootA" }))
+        XCTAssertEqual(afterRootA.attributes["indent"], beforeRootA.attributes["indent"])
+        XCTAssertTrue(afterRootA.richText.contains("<strong>Root A</strong>"))
+        XCTAssertTrue(beforeRootA.richText.contains("<strong>Root A</strong>"))
+
+        let afterRootB = try XCTUnwrap(afterRows.first(where: { $0.id == "rootB" }))
+        XCTAssertEqual(afterRootB.children.count, 3)
+        XCTAssertEqual(afterRootB.children.first?.id, "childA")
+        XCTAssertEqual(afterRootB.children.last?.id, "childB")
+
+        let afterChildA = try XCTUnwrap(afterRootB.children.first(where: { $0.id == "childA" }))
+        XCTAssertEqual(afterChildA.attributes["data-extra"], beforeChildA.attributes["data-extra"])
+        XCTAssertTrue(afterChildA.richText.contains("<em>Child A</em>"))
+        XCTAssertTrue(beforeChildA.richText.contains("<em>Child A</em>"))
+    }
+
+    func testAddPlacementErrorsAreClear() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        XCTAssertThrowsError(try BikeTool.handleAdd(args: [
+            tempURL.path,
+            "--text", "bad flags",
+            "--before-id", "rootA",
+            "--at-start",
+            "--backup-mode", "none",
+        ])) { error in
+            XCTAssertTrue("\(error)".contains("Conflicting placement flags"))
+        }
+
+        XCTAssertThrowsError(try BikeTool.handleAdd(args: [
+            tempURL.path,
+            "--text", "missing target",
+            "--before-id", "does-not-exist",
+            "--backup-mode", "none",
+        ])) { error in
+            XCTAssertTrue("\(error)".contains("Target id not found"))
+        }
+
+        XCTAssertThrowsError(try BikeTool.handleAdd(args: [
+            tempURL.path,
+            "--text", "parent mismatch",
+            "--after-id", "childA",
+            "--parent-id", "rootC",
+            "--backup-mode", "none",
+        ])) { error in
+            XCTAssertTrue("\(error)".contains("Parent mismatch"))
+        }
+    }
+
     private func copyFixtureToTempFile() throws -> URL {
         let fixture = fixtureURL()
         let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -163,6 +302,38 @@ final class BikeToolTests: XCTestCase {
         let target = tempDir.appendingPathComponent("bike-tool-link-fixture-\(UUID().uuidString).bike")
         try contents.write(to: target, atomically: true, encoding: .utf8)
         return target
+    }
+
+    private func writePlacementFixture() throws -> URL {
+        try writeTempBike(contents: """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <html xmlns="http://www.w3.org/1999/xhtml">
+          <head>
+            <meta charset="utf-8"/>
+          </head>
+          <body>
+            <ul>
+              <li id="rootA" data-type="heading" indent="1">
+                <p><strong>Root A</strong></p>
+              </li>
+              <li id="rootB" data-type="task">
+                <p>Root B</p>
+                <ul>
+                  <li id="childA" data-type="note" data-extra="keep-me">
+                    <p><em>Child A</em></p>
+                  </li>
+                  <li id="childB" data-type="note">
+                    <p>Child B</p>
+                  </li>
+                </ul>
+              </li>
+              <li id="rootC" data-type="note">
+                <p>Root C</p>
+              </li>
+            </ul>
+          </body>
+        </html>
+        """)
     }
 
     private func withIsolatedBackupDirectory(_ body: (URL) throws -> Void) throws {

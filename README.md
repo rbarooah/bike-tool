@@ -118,6 +118,9 @@ bike-tool to-json "/absolute/path/file.bike"
 bike-tool to-json "/absolute/path/file.bike" --rich-text
 bike-tool add "/absolute/path/file.bike" --text "New task" --type task
 bike-tool add "/absolute/path/file.bike" --text "Child note" --type note --parent-id abc123 --write-mode coordinated
+bike-tool add "/absolute/path/file.bike" --text "Top row" --type heading --at-start
+bike-tool add "/absolute/path/file.bike" --text "Before row" --type note --before-id abc123
+bike-tool add "/absolute/path/file.bike" --text "After row" --type note --after-id abc123
 bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type note
 bike-tool done "/absolute/path/file.bike" --id abc123 --write-mode atomic
 bike-tool undone "/absolute/path/file.bike" --id abc123 --write-mode inplace
@@ -148,6 +151,13 @@ Backup modes:
 - `managed` (default): stores backups under `$CODEX_HOME/state/bike-tool/backups` (or `~/.codex/state/bike-tool/backups`) with automatic retention pruning.
 - `inline`: creates/replaces `<file>.bak` in the source directory.
 - `none`: skips backup creation.
+
+Add placement flags (`bike-tool add`, mutually exclusive):
+
+- `--before-id <row-id>`: insert before target row (parent inferred from target).
+- `--after-id <row-id>`: insert after target row (parent inferred from target).
+- `--at-start`: insert as first sibling (or first child with `--parent-id`).
+- `--at-end`: insert as last sibling (default behavior).
 
 Optional write modes:
 

@@ -39,6 +39,11 @@ Quick smoke checks:
 # Delete row
 .build/debug/bike-tool delete "/tmp/test.bike" --id someRowId
 
+# Position-aware add
+.build/debug/bike-tool add "/tmp/test.bike" --text "Top task" --type task --at-start
+.build/debug/bike-tool add "/tmp/test.bike" --text "Insert before row" --type note --before-id someRowId
+.build/debug/bike-tool add "/tmp/test.bike" --text "Insert after row" --type note --after-id someRowId
+
 # Confirm structured link extraction in JSON output
 .build/debug/bike-tool to-json "/tmp/test.bike" | rg '"links"|target.bike'
 
