@@ -176,6 +176,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 Row type semantics and planned/default behavior are defined in [docs/TYPE_POLICY.md](docs/TYPE_POLICY.md).
 Rich text write-command design and safety rules are defined in [docs/RICH_TEXT_EDITING.md](docs/RICH_TEXT_EDITING.md).
+Core library split plan (reusable module + CLI boundary) is defined in [docs/CORE_MODULE_SPLIT.md](docs/CORE_MODULE_SPLIT.md).
 
 ## Agent Instructions
 
