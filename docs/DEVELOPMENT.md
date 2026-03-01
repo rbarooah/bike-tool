@@ -7,6 +7,11 @@ cd /path/to/bike-tool
 swift build
 ```
 
+Current package targets:
+
+- `BikeToolCore` (library module with parse/mutate/backup logic)
+- `bike-tool` (CLI executable that maps commands to `BikeToolCore`)
+
 ## Test
 
 ```bash
@@ -15,6 +20,16 @@ swift test
 ```
 
 The test suite includes a regression fixture with complex rich text and custom attributes.
+
+Targeted runs:
+
+```bash
+# Core library tests
+swift test --filter BikeToolCoreTests
+
+# CLI-oriented tests
+swift test --filter BikeToolTests
+```
 
 ## Local Debug Run
 

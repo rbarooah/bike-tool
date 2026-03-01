@@ -15,6 +15,7 @@ A Swift CLI for reading and safely editing [Bike.app](https://www.hogbaysoftware
 - Mark rows done/undone by id
 - Delete rows by id
 - Managed backup history with retention (default), plus optional inline `.bak`
+- Reusable `BikeToolCore` Swift module for in-process `.bike` operations
 
 ## Requirements
 
@@ -94,6 +95,35 @@ Default install location:
 If `CODEX_HOME` is set, the installer uses `$CODEX_HOME/bin/bike-tool`.
 
 Homebrew notes (formula update workflow, release guidance): [docs/HOMEBREW.md](docs/HOMEBREW.md).
+
+## Using BikeToolCore (Swift Library)
+
+`BikeToolCore` exposes the same core document APIs used by the CLI, so other Swift tools can edit `.bike` files in-process:
+
+```swift
+import BikeToolCore
+
+let bike = try BikeDocument(path: "/absolute/path/file.bike")
+let rows = try bike.readRows()
+
+_ = try bike.addLinkRow(
+    href: "file:///absolute/path/reference.bike",
+    text: "reference.bike",
+    type: "item",
+    parentID: nil
+)
+
+try bike.saveWithBackup(writeMode: .coordinated, backupMode: .managed)
+print("Row count: \(rows.count)")
+```
+
+Core module APIs include:
+
+- `BikeDocument` read/mutation/save methods
+- `Row` and `RowLink`
+- `WriteMode`, `BackupMode`, and `AddPlacement`
+- `BackupManager` backup list/prune/restore helpers
+- `BikeToolCoreError`
 
 ## Codex Skill
 
