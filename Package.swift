@@ -25,10 +25,14 @@ let package = Package(
         ),
         .testTarget(
             name: "bike-toolTests",
-            dependencies: ["bike-tool"],
+            dependencies: ["bike-tool", "BikeToolCore"],
             resources: [
                 .copy("Fixtures/Chronogram Master Outline copy.bike"),
             ]
+        ),
+        .testTarget(
+            name: "BikeToolCoreTests",
+            dependencies: ["BikeToolCore"]
         ),
     ]
 )

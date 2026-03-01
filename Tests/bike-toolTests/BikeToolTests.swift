@@ -1,5 +1,6 @@
 import XCTest
 @testable import bike_tool
+import BikeToolCore
 
 final class BikeToolTests: XCTestCase {
     func testRoundTripPreservesRichMarkupAndUnknownAttributes() throws {
