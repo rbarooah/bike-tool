@@ -1,9 +1,9 @@
 class BikeTool < Formula
   desc "CLI for reading and safely editing Bike.app .bike outline files"
   homepage "https://github.com/rbarooah/bike-tool"
-  url "https://github.com/rbarooah/bike-tool/archive/02d3009254742d3d982bff844cd3a1c3a1ac38de.tar.gz"
-  version "0.2.2"
-  sha256 "30bef19b5c9be1039c88ace76bfb0e5a9bd96cf315dc97a8c8ce1d1e167df05a"
+  url "https://github.com/rbarooah/bike-tool/archive/e2d88d2a76f970f3add1a88e6f0f079528e36a27.tar.gz"
+  version "0.2.3"
+  sha256 "08688231bafb2f978a20267e6af7edfc09a5dbe83dd5ed92151f8931b16d1645"
   license "MIT"
 
   depends_on :macos
