@@ -1,9 +1,11 @@
-# Core Module Split Spec
+# Core Module Split
 
-This spec defines how to split `bike-tool` into:
+Status: implemented on `main` (released in Homebrew `0.2.3`).
 
-- a reusable in-process Swift library module
-- a thin CLI module that depends on that library
+This document describes the current split of `bike-tool` into:
+
+- a reusable in-process Swift library module (`BikeToolCore`)
+- a thin CLI module (`bike-tool`) that depends on that library
 
 ## Motivation
 
@@ -27,14 +29,7 @@ This spec defines how to split `bike-tool` into:
 - No breaking CLI command/flag changes.
 - No dependency on external XML libraries.
 
-## Proposed Package Layout
-
-Current:
-
-- `Sources/bike-tool/` (CLI + core mixed)
-- `Tests/bike-toolTests/`
-
-Target:
+## Package Layout (Current)
 
 - `Sources/BikeToolCore/`
   - document model, parser, mutation APIs
@@ -47,13 +42,13 @@ Target:
   - command output formatting
   - maps CLI args to `BikeToolCore` APIs
 - `Tests/BikeToolCoreTests/`
-  - most current logic tests move here
+  - core document/mutation/backup/rich-text tests
 - `Tests/bike-toolTests/`
-  - CLI integration/smoke/error-message tests
+  - CLI command-routing and integration tests
 
-## Public Core API (Initial)
+## Public Core API (Current)
 
-Initial public symbols should cover current CLI capabilities:
+Public symbols currently exposed by `BikeToolCore`:
 
 - `BikeDocument`
   - `init(path:)`
@@ -68,14 +63,9 @@ Initial public symbols should cover current CLI capabilities:
 - `Row`, `RowLink`
 - `WriteMode`, `BackupMode`, `AddPlacement`
 - `BackupManager` APIs currently used by CLI
-- error type(s) currently represented by `CLIError` should be renamed/split:
-  - core-level error type (for library consumers)
-  - CLI-only user-facing usage errors
+- `BikeToolCoreError` for library-level failures
 
-Notes:
-
-- Core API should avoid direct dependency on `CommandLine`.
-- CLI remains responsible for user-facing usage text and flag validation messaging.
+CLI-only usage/parsing errors remain in the CLI target as `CLIError`.
 
 ## Module Boundary Rules
 
@@ -85,13 +75,13 @@ Notes:
 
 ## Error Model
 
-- Introduce `BikeToolCoreError` (or similar) for library-level failures:
+`BikeToolCoreError` is used for library-level failures:
   - file not found
   - invalid structure
   - invalid mutation target
   - invalid rich-text fragment
   - serialization/write/backup failure
-- CLI maps these to readable terminal errors and exit codes.
+- The CLI maps these to user-facing terminal output and non-zero exit status.
 
 ## Concurrency and Semantics
 
@@ -99,32 +89,23 @@ Notes:
 - Preserve current write coordination model (`NSFileCoordinator`) behind core APIs.
 - No behavior change in backup modes and write modes.
 
-## Migration Plan
+## Completed Migration Phases
 
-Phase 1: Target setup
-
-- Add `BikeToolCore` library target to `Package.swift`.
-- Add `BikeToolCoreTests` target.
-
-Phase 2: Mechanical move
-
-- Move core data types and logic from `Sources/bike-tool/bike_tool.swift` into `Sources/BikeToolCore/` with minimal refactor.
-- Keep CLI compiling by importing `BikeToolCore`.
-
-Phase 3: Error/API cleanup
-
-- Introduce core error type.
-- Limit public API surface intentionally.
-
-Phase 4: Test split
-
-- Move document/mutation/backup/rich-text tests to `BikeToolCoreTests`.
-- Keep command parsing/help/CLI integration tests in `bike-toolTests`.
-
-Phase 5: Documentation
-
-- Update README and development docs with library usage examples.
-- Keep CLI examples unchanged.
+- Phase 1: target setup
+  - commit: `e62af5d`
+  - added `BikeToolCore` library target and wired CLI dependency
+- Phase 2: mechanical move
+  - commit: `8ea8b05`
+  - moved core document/types/backup logic into `Sources/BikeToolCore/`
+- Phase 3: error/API cleanup
+  - commit: `8ea8b05`
+  - introduced `BikeToolCoreError` and separated CLI/core error roles
+- Phase 4: test split
+  - commit: `71d5c44`
+  - added `BikeToolCoreTests` and updated test-target dependencies
+- Phase 5: documentation
+  - commit: `e2d88d2`
+  - updated README and development docs for library consumption
 
 ## Acceptance Criteria
 
@@ -132,6 +113,8 @@ Phase 5: Documentation
 - `swift test` passes with split test targets.
 - CLI behavior matches current release for all existing commands and flags.
 - Library can be imported by another local Swift package and run in-process operations on a `.bike` file.
+
+All acceptance criteria are currently met.
 
 ## Risks and Mitigations
 
