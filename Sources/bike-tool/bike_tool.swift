@@ -85,6 +85,10 @@ struct BikeTool {
             try handleAdd(args: Array(args.dropFirst()))
         case "add-link":
             try handleAddLink(args: Array(args.dropFirst()))
+        case "add-rich":
+            try handleAddRich(args: Array(args.dropFirst()))
+        case "set-rich-text":
+            try handleSetRichText(args: Array(args.dropFirst()))
         case "done":
             try handleDone(args: Array(args.dropFirst()), markDone: true)
         case "undone":
@@ -109,6 +113,8 @@ struct BikeTool {
           bike-tool to-json <file.bike> [--rich-text]
           bike-tool add <file.bike> --text "<text>" [--parent-id <id>] [--type \(addTypeUsage)] [--before-id <row-id> | --after-id <row-id> | --at-start | --at-end] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool add-link <file.bike> --href "<uri>" [--text "<label>"] [--parent-id <id>] [--type \(addTypeUsage)] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool add-rich <file.bike> --rich-text "<inline-xml-fragment>" [--parent-id <id>] [--type \(addTypeUsage)] [--before-id <row-id> | --after-id <row-id> | --at-start | --at-end] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
+          bike-tool set-rich-text <file.bike> --id <id> --rich-text "<inline-xml-fragment>" [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool done <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool undone <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
           bike-tool delete <file.bike> --id <id> [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]
@@ -192,6 +198,49 @@ struct BikeTool {
         let newID = try bike.addLinkRow(href: href, text: label, type: type, parentID: parentID)
         try bike.saveWithBackup(writeMode: writeMode, backupMode: backupMode)
         print("Added link row id=\(newID)")
+    }
+
+    static func handleAddRich(args: [String]) throws {
+        guard let file = args.first else {
+            throw CLIError(message: "Usage: bike-tool add-rich <file.bike> --rich-text \"<inline-xml-fragment>\" [--parent-id <id>] [--type \(addTypeUsage)] [--before-id <row-id> | --after-id <row-id> | --at-start | --at-end] [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
+        }
+        let flags = try parseFlags(Array(args.dropFirst()))
+        guard let richText = flags["rich-text"] else {
+            throw CLIError(message: "Missing required flag: --rich-text")
+        }
+        let writeMode = try parseWriteMode(flags: flags)
+        let backupMode = try parseBackupMode(flags: flags)
+        let parentID = flags["parent-id"]
+        let placement = try parseAddPlacement(flags: flags)
+        let type = try parseAddType(rawValue: flags["type"], defaultType: "item")
+
+        let bike = try BikeDocument(path: file)
+        let newID = try bike.addRichRow(richText: richText, type: type, parentID: parentID, placement: placement)
+        try bike.saveWithBackup(writeMode: writeMode, backupMode: backupMode)
+        print("Added rich row id=\(newID)")
+    }
+
+    static func handleSetRichText(args: [String]) throws {
+        guard let file = args.first else {
+            throw CLIError(message: "Usage: bike-tool set-rich-text <file.bike> --id <id> --rich-text \"<inline-xml-fragment>\" [--write-mode coordinated|atomic|inplace] [--backup-mode managed|inline|none]")
+        }
+        let flags = try parseFlags(Array(args.dropFirst()))
+        guard let id = flags["id"] else {
+            throw CLIError(message: "Missing required flag: --id")
+        }
+        guard let richText = flags["rich-text"] else {
+            throw CLIError(message: "Missing required flag: --rich-text")
+        }
+        let writeMode = try parseWriteMode(flags: flags)
+        let backupMode = try parseBackupMode(flags: flags)
+
+        let bike = try BikeDocument(path: file)
+        let changed = try bike.setRichText(id: id, richText: richText)
+        guard changed else {
+            throw CLIError(message: "No row found with id=\(id)")
+        }
+        try bike.saveWithBackup(writeMode: writeMode, backupMode: backupMode)
+        print("Updated rich text id=\(id)")
     }
 
     static func handleDone(args: [String], markDone: Bool) throws {
@@ -409,6 +458,17 @@ struct BikeTool {
 }
 
 final class BikeDocument {
+    private static let allowedInlineTagNames: Set<String> = ["a", "strong", "em", "s", "code", "mark", "span"]
+    private static let allowedInlineAttributesByTag: [String: Set<String>] = [
+        "a": ["href", "title", "rel"],
+        "span": ["style"],
+        "strong": [],
+        "em": [],
+        "s": [],
+        "code": [],
+        "mark": [],
+    ]
+
     private let path: String
     private let url: URL
     private let doc: XMLDocument
@@ -445,6 +505,11 @@ final class BikeDocument {
         a.addAttribute(XMLNode.attribute(withName: "href", stringValue: normalizedHref) as! XMLNode)
         a.stringValue = normalizedText.isEmpty ? normalizedHref : normalizedText
         p.addChild(a)
+        return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
+    }
+
+    func addRichRow(richText: String, type: String, parentID: String?, placement: AddPlacement = .atEnd) throws -> String {
+        let p = try paragraphFromRichText(richText)
         return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
     }
 
@@ -551,6 +616,21 @@ final class BikeDocument {
         return true
     }
 
+    func setRichText(id: String, richText: String) throws -> Bool {
+        guard let li = findLI(id: id) else { return false }
+        let p = upsertParagraph(in: li)
+        let newChildren = try parseRichTextFragment(richText)
+
+        let existingChildren = p.children ?? []
+        for child in existingChildren {
+            child.detach()
+        }
+        for child in newChildren {
+            p.addChild(child)
+        }
+        return true
+    }
+
     func saveWithBackup(writeMode: WriteMode = .coordinated, backupMode: BackupMode = .managed) throws {
         let outData = try serializedXML()
         switch writeMode {
@@ -566,7 +646,9 @@ final class BikeDocument {
     private func serializedXML() throws -> Data {
         doc.characterEncoding = "UTF-8"
         doc.version = "1.0"
-        let xmlData = doc.xmlData(options: [.nodePrettyPrint, .nodeCompactEmptyElement])
+        // Avoid pretty-print rewriting inside inline-rich <p> content. Pretty print introduces
+        // indentation/newline text nodes around mixed inline elements (for example <strong> + text).
+        let xmlData = doc.xmlData(options: [.nodeCompactEmptyElement])
         guard var xml = String(data: xmlData, encoding: .utf8) else {
             throw CLIError(message: "Unable to serialize XML as UTF-8.")
         }
@@ -749,6 +831,96 @@ final class BikeDocument {
         return children.map { $0.xmlString(options: []) }.joined()
     }
 
+    private func paragraphFromRichText(_ richText: String) throws -> XMLElement {
+        let p = XMLElement(name: "p")
+        let richChildren = try parseRichTextFragment(richText)
+        for child in richChildren {
+            p.addChild(child)
+        }
+        return p
+    }
+
+    private func parseRichTextFragment(_ fragment: String) throws -> [XMLNode] {
+        if fragment.isEmpty {
+            return []
+        }
+
+        // Plain text input with no tag delimiters should be accepted directly.
+        if !fragment.contains("<"), !fragment.contains(">") {
+            return [XMLNode.text(withStringValue: fragment) as! XMLNode]
+        }
+
+        let wrapped = "<root>\(fragment)</root>"
+        let parsedDoc: XMLDocument
+        do {
+            parsedDoc = try XMLDocument(xmlString: wrapped, options: [.nodePreserveAll])
+        } catch {
+            throw CLIError(message: "Invalid --rich-text fragment: not well-formed XML.")
+        }
+
+        guard let root = parsedDoc.rootElement() else {
+            throw CLIError(message: "Invalid --rich-text fragment: unable to parse root container.")
+        }
+
+        let children = root.children ?? []
+        return try children.map { try sanitizeInlineNode($0) }
+    }
+
+    private func sanitizeInlineNode(_ node: XMLNode) throws -> XMLNode {
+        switch node.kind {
+        case .text:
+            return XMLNode.text(withStringValue: node.stringValue ?? "") as! XMLNode
+        case .element:
+            guard let element = node as? XMLElement else {
+                throw CLIError(message: "Invalid --rich-text fragment: malformed element node.")
+            }
+            return try sanitizeInlineElement(element)
+        default:
+            throw CLIError(message: "Invalid --rich-text fragment: unsupported node kind in paragraph content.")
+        }
+    }
+
+    private func sanitizeInlineElement(_ element: XMLElement) throws -> XMLElement {
+        guard let rawName = element.name, !rawName.isEmpty else {
+            throw CLIError(message: "Invalid --rich-text fragment: encountered unnamed element.")
+        }
+
+        let canonicalName = canonicalInlineName(from: rawName)
+        guard Self.allowedInlineTagNames.contains(canonicalName) else {
+            throw CLIError(message: "Invalid --rich-text fragment: unsupported tag '\(rawName)'.")
+        }
+
+        let allowedAttributes = Self.allowedInlineAttributesByTag[canonicalName] ?? []
+        let copied = XMLElement(name: rawName)
+        for attribute in element.attributes ?? [] {
+            guard let attributeName = attribute.name, !attributeName.isEmpty else { continue }
+            let canonicalAttributeName = canonicalInlineName(from: attributeName)
+            guard allowedAttributes.contains(canonicalAttributeName) else {
+                throw CLIError(message: "Invalid --rich-text fragment: attribute '\(attributeName)' is not allowed on <\(rawName)>.")
+            }
+            let attributeValue = attribute.stringValue ?? ""
+            if canonicalName == "a", canonicalAttributeName == "href",
+               attributeValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            {
+                throw CLIError(message: "Invalid --rich-text fragment: <a> requires non-empty href.")
+            }
+            copied.addAttribute(XMLNode.attribute(withName: attributeName, stringValue: attributeValue) as! XMLNode)
+        }
+
+        if canonicalName == "a", copied.attribute(forName: "href") == nil {
+            throw CLIError(message: "Invalid --rich-text fragment: <a> requires href attribute.")
+        }
+
+        for child in element.children ?? [] {
+            copied.addChild(try sanitizeInlineNode(child))
+        }
+        return copied
+    }
+
+    private func canonicalInlineName(from rawName: String) -> String {
+        rawName.split(separator: ":").last.map(String.init) ?? rawName
+    }
+
     private func extractLinks(from paragraph: XMLElement) -> [RowLink] {
         collectAnchorElements(in: paragraph).compactMap { anchor in
             guard let href = anchor.attribute(forName: "href")?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -800,6 +972,21 @@ final class BikeDocument {
             return "item"
         }
         return trimmed
+    }
+
+    private func upsertParagraph(in li: XMLElement) -> XMLElement {
+        if let existing = firstChildElement(named: "p", in: li) {
+            return existing
+        }
+
+        let paragraph = XMLElement(name: "p")
+        let children = li.children ?? []
+        if children.isEmpty {
+            li.addChild(paragraph)
+        } else {
+            li.insertChild(paragraph, at: 0)
+        }
+        return paragraph
     }
 }
 

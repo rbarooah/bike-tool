@@ -233,6 +233,132 @@ final class BikeToolTests: XCTestCase {
         }
     }
 
+    func testHandleAddRichWritesInlineMarkupAndLinks() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleAddRich(args: [
+            tempURL.path,
+            "--rich-text", "<strong>Bold</strong> <em>italic</em> <a href=\"file:///tmp/rich-link.bike\">rich-link.bike</a>",
+            "--parent-id", "rootB",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let rootB = try XCTUnwrap(rows.first(where: { $0.id == "rootB" }))
+        let inserted = try XCTUnwrap(rootB.children.first(where: { $0.text.contains("rich-link.bike") }))
+        XCTAssertNil(inserted.type, "add-rich should default to untyped item rows.")
+        XCTAssertTrue(inserted.richText.contains("<strong>Bold</strong>"))
+        XCTAssertTrue(inserted.richText.contains("<em>italic</em>"))
+        XCTAssertEqual(inserted.links.first?.href, "file:///tmp/rich-link.bike")
+    }
+
+    func testHandleSetRichTextReplacesParagraphOnly() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleSetRichText(args: [
+            tempURL.path,
+            "--id", "rootB",
+            "--rich-text", "Updated <mark>rich</mark> text with <a href=\"https://example.com\">link</a>",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let rootB = try XCTUnwrap(rows.first(where: { $0.id == "rootB" }))
+        XCTAssertEqual(rootB.type, "task", "set-rich-text should preserve row type metadata.")
+        XCTAssertEqual(rootB.children.map(\.id), ["childA", "childB"], "set-rich-text should preserve child rows.")
+        XCTAssertTrue(rootB.richText.contains("<mark>rich</mark>"))
+        XCTAssertEqual(rootB.links.first?.href, "https://example.com")
+    }
+
+    func testHandleSetRichTextMixedInlineContentDoesNotInjectIndentWhitespace() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleSetRichText(args: [
+            tempURL.path,
+            "--id", "rootA",
+            "--rich-text", "<strong>Summary:</strong> Example sentence.",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let rootA = try XCTUnwrap(rows.first(where: { $0.id == "rootA" }))
+        XCTAssertEqual(rootA.richText, "<strong>Summary:</strong> Example sentence.")
+        XCTAssertEqual(rootA.text, "Summary: Example sentence.")
+    }
+
+    func testHandleAddRichMixedInlineContentDoesNotInjectIndentWhitespace() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleAddRich(args: [
+            tempURL.path,
+            "--rich-text", "<strong>Label:</strong> Value",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let inserted = try XCTUnwrap(rows.first(where: { $0.text == "Label: Value" }))
+        XCTAssertEqual(inserted.richText, "<strong>Label:</strong> Value")
+    }
+
+    func testHandleAddRichRejectsMalformedFragment() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        XCTAssertThrowsError(try BikeTool.handleAddRich(args: [
+            tempURL.path,
+            "--rich-text", "<strong>missing close",
+            "--backup-mode", "none",
+        ])) { error in
+            XCTAssertTrue("\(error)".contains("not well-formed XML"))
+        }
+    }
+
+    func testHandleAddRichRejectsUnsupportedTag() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        XCTAssertThrowsError(try BikeTool.handleAddRich(args: [
+            tempURL.path,
+            "--rich-text", "<div>Not allowed</div>",
+            "--backup-mode", "none",
+        ])) { error in
+            XCTAssertTrue("\(error)".contains("unsupported tag"))
+        }
+    }
+
+    func testHandleAddRichRejectsUnsupportedAttribute() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        XCTAssertThrowsError(try BikeTool.handleAddRich(args: [
+            tempURL.path,
+            "--rich-text", "<a href=\"https://example.com\" onclick=\"x()\">Bad attr</a>",
+            "--backup-mode", "none",
+        ])) { error in
+            XCTAssertTrue("\(error)".contains("not allowed"))
+        }
+    }
+
+    func testHandleAddRichEmptyFragmentCreatesEmptyParagraph() throws {
+        let tempURL = try writePlacementFixture()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        try BikeTool.handleAddRich(args: [
+            tempURL.path,
+            "--rich-text", "",
+            "--backup-mode", "none",
+        ])
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        let inserted = try XCTUnwrap(rows.first(where: { $0.id != "rootA" && $0.id != "rootB" && $0.id != "rootC" }))
+        XCTAssertEqual(inserted.text, "")
+        XCTAssertEqual(inserted.richText, "")
+    }
+
     func testAddAtStartInsertsRootRowAtTop() throws {
         let tempURL = try writePlacementFixture()
         defer { try? FileManager.default.removeItem(at: tempURL) }

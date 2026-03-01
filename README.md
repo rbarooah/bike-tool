@@ -11,6 +11,7 @@ A Swift CLI for reading and safely editing [Bike.app](https://www.hogbaysoftware
 - Export rows to JSON (`--rich-text` optional, `links` included when present)
 - Add rows (`item`, `task`, `note`, `heading`, `quote`, `code`, `ordered`, `unordered`)
 - Add linked rows with explicit `<a href="...">` content
+- Add and update inline rich text safely (`add-rich`, `set-rich-text`)
 - Mark rows done/undone by id
 - Delete rows by id
 - Managed backup history with retention (default), plus optional inline `.bak`
@@ -61,7 +62,7 @@ cat > CLAUDE.md <<'EOF'
 - Use:
   - bike-tool list
   - bike-tool to-json
-  - bike-tool add / add-link / done / undone / delete
+  - bike-tool add / add-link / add-rich / set-rich-text / done / undone / delete
 EOF
 
 # 3) Verify the CLI is installed
@@ -123,6 +124,8 @@ bike-tool add "/absolute/path/file.bike" --text "Quoted row" --type quote
 bike-tool add "/absolute/path/file.bike" --text "Before row" --type item --before-id abc123
 bike-tool add "/absolute/path/file.bike" --text "After row" --type item --after-id abc123
 bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type item
+bike-tool add-rich "/absolute/path/file.bike" --rich-text "<strong>Bold</strong> and <a href=\"file:///absolute/path/ref.bike\">ref</a>" --type item
+bike-tool set-rich-text "/absolute/path/file.bike" --id abc123 --rich-text "<mark>Updated</mark> text"
 bike-tool done "/absolute/path/file.bike" --id abc123 --write-mode atomic
 bike-tool undone "/absolute/path/file.bike" --id abc123 --write-mode inplace
 bike-tool delete "/absolute/path/file.bike" --id abc123
@@ -142,7 +145,7 @@ bike-tool backup restore "/absolute/path/file.bike" --id "<backup-id>"
 
 ## Safety Model
 
-On write commands (`add`, `add-link`, `done`, `undone`, `delete`), the tool:
+On write commands (`add`, `add-link`, `add-rich`, `set-rich-text`, `done`, `undone`, `delete`), the tool:
 
 1. Reads and updates XML in-memory.
 2. Creates a backup according to `--backup-mode` (default: `managed`).
@@ -172,6 +175,7 @@ Optional write modes:
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 Row type semantics and planned/default behavior are defined in [docs/TYPE_POLICY.md](docs/TYPE_POLICY.md).
+Rich text write-command design and safety rules are defined in [docs/RICH_TEXT_EDITING.md](docs/RICH_TEXT_EDITING.md).
 
 ## Agent Instructions
 

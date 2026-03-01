@@ -84,7 +84,7 @@ If no open task exists, report that explicitly.
 
 1. Validate input file before editing.
 2. Read structure (`list`) or machine-readable data (`to-json`) as needed.
-3. Make edits via CLI commands (`add`, `add-link`, `done`, `undone`).
+3. Make edits via CLI commands (`add`, `add-link`, `add-rich`, `set-rich-text`, `done`, `undone`).
 4. Re-validate after edits.
 5. Confirm backup creation:
    - default: verify `bike-tool backup list "<file>"` includes a new managed backup
@@ -104,6 +104,8 @@ bike-tool add "/absolute/path/file.bike" --text "Before row" --type item --befor
 bike-tool add "/absolute/path/file.bike" --text "After row" --type item --after-id abc123
 bike-tool add "/absolute/path/file.bike" --text "Quoted block" --type quote
 bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type item
+bike-tool add-rich "/absolute/path/file.bike" --rich-text "<strong>Bold</strong> and <a href=\"file:///absolute/path/target.bike\">target</a>" --type item
+bike-tool set-rich-text "/absolute/path/file.bike" --id abc123 --rich-text "<mark>Updated</mark> paragraph"
 bike-tool done "/absolute/path/file.bike" --id abc123
 bike-tool undone "/absolute/path/file.bike" --id abc123
 bike-tool delete "/absolute/path/file.bike" --id abc123
@@ -121,6 +123,7 @@ bike-tool backup restore "/absolute/path/file.bike" --id "<backup-id>"
 - Use `--rich-text` when inline formatting inside `<p>` matters.
 - Some rows may have no `data-type`; treat them as generic `item` rows.
 - `add` and `add-link` default to `item`; use `note` only when annotation styling is explicitly desired.
+- Use `add-rich` and `set-rich-text` for inline style edits; do not attempt ad-hoc XML edits.
 - Write commands default to `--write-mode coordinated` and support `atomic`/`inplace` for troubleshooting.
 - Write commands default to `--backup-mode managed` (stored outside the source folder); use `--backup-mode inline` only when sidecar `.bak` is explicitly requested.
 - When adding references to files, prefer `add-link` with `file:///absolute/path/...` instead of plain text path rows.

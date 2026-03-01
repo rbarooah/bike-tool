@@ -25,7 +25,7 @@ cat > CLAUDE.md <<'EOF'
 - Use:
   - bike-tool list
   - bike-tool to-json
-  - bike-tool add / add-link / done / undone / delete
+  - bike-tool add / add-link / add-rich / set-rich-text / done / undone / delete
 EOF
 ```
 
@@ -42,6 +42,7 @@ bike-tool validate "/absolute/path/file.bike"
 bike-tool list "/absolute/path/file.bike"
 bike-tool to-json "/absolute/path/file.bike"
 bike-tool add-link "/absolute/path/file.bike" --href "file:///absolute/path/target.bike" --text "target.bike" --type item
+bike-tool add-rich "/absolute/path/file.bike" --rich-text "<strong>Bold</strong> text" --type item
 ```
 
 ## Notes
