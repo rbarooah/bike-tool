@@ -1,5 +1,6 @@
 import Foundation
 
+/// In-memory `.bike` document model with safe, structured mutation APIs.
 public final class BikeDocument {
     private static let allowedInlineTagNames: Set<String> = ["a", "strong", "em", "s", "code", "mark", "span"]
     private static let allowedInlineAttributesByTag: [String: Set<String>] = [
@@ -16,6 +17,9 @@ public final class BikeDocument {
     private let url: URL
     private let doc: XMLDocument
 
+    /// Loads and validates a Bike XML document from disk.
+    /// - Parameter path: Absolute or relative file path to a `.bike` document.
+    /// - Throws: ``BikeToolCoreError`` when the file is missing, or XML parsing/validation errors.
     public init(path: String) throws {
         self.path = path
         self.url = URL(fileURLWithPath: path)
@@ -25,17 +29,37 @@ public final class BikeDocument {
         self.doc = try XMLDocument(contentsOf: url, options: [.nodePreserveAll, .documentValidate])
     }
 
+    /// Reads top-level outline rows from the document.
+    /// - Returns: Parsed rows preserving attributes, rich text, and hierarchy.
+    /// - Throws: ``BikeToolCoreError`` when expected Bike structure is missing.
     public func readRows() throws -> [Row] {
         let rootUL = try topUL()
         return parseRows(in: rootUL)
     }
 
+    /// Adds a plain-text row.
+    /// - Parameters:
+    ///   - text: Plain text for the row paragraph.
+    ///   - type: Bike row type (for example `item`, `task`, `note`).
+    ///   - parentID: Optional parent row id for nested insertion.
+    ///   - placement: Insertion placement among siblings.
+    /// - Returns: The generated row id.
+    /// - Throws: ``BikeToolCoreError`` for invalid placement or missing parent/target rows.
     public func addRow(text: String, type: String, parentID: String?, placement: AddPlacement = .atEnd) throws -> String {
         let p = XMLElement(name: "p")
         p.stringValue = text
         return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
     }
 
+    /// Adds a row containing an anchor (`<a href="...">`).
+    /// - Parameters:
+    ///   - href: Link destination URI. Must be non-empty after trimming.
+    ///   - text: Link label text. Falls back to `href` when empty after trimming.
+    ///   - type: Bike row type.
+    ///   - parentID: Optional parent row id for nested insertion.
+    ///   - placement: Insertion placement among siblings.
+    /// - Returns: The generated row id.
+    /// - Throws: ``BikeToolCoreError`` for invalid `href` or placement/parent errors.
     public func addLinkRow(href: String, text: String, type: String, parentID: String?, placement: AddPlacement = .atEnd) throws -> String {
         let normalizedHref = href.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedHref.isEmpty else {
@@ -51,6 +75,14 @@ public final class BikeDocument {
         return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
     }
 
+    /// Adds a row whose paragraph content is provided as inline rich-text XML fragment.
+    /// - Parameters:
+    ///   - richText: Inline XML fragment allowed by the sanitizer (`a`, `strong`, `em`, `s`, `code`, `mark`, `span`).
+    ///   - type: Bike row type.
+    ///   - parentID: Optional parent row id for nested insertion.
+    ///   - placement: Insertion placement among siblings.
+    /// - Returns: The generated row id.
+    /// - Throws: ``BikeToolCoreError`` for malformed/unsupported rich text or invalid placement.
     public func addRichRow(richText: String, type: String, parentID: String?, placement: AddPlacement = .atEnd) throws -> String {
         let p = try paragraphFromRichText(richText)
         return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
@@ -141,6 +173,12 @@ public final class BikeDocument {
         return id
     }
 
+    /// Marks or unmarks an existing row as done.
+    /// - Parameters:
+    ///   - id: Target row id.
+    ///   - markDone: `true` to set `data-done`, `false` to remove it.
+    /// - Returns: `true` when the row exists and was updated; otherwise `false`.
+    /// - Throws: XML traversal errors when internal document state is invalid.
     public func setDone(id: String, markDone: Bool) throws -> Bool {
         guard let li = findLI(id: id) else { return false }
         if markDone {
@@ -153,12 +191,22 @@ public final class BikeDocument {
         return true
     }
 
+    /// Deletes a row by id.
+    /// - Parameter id: Target row id.
+    /// - Returns: `true` when the row exists and was removed; otherwise `false`.
+    /// - Throws: XML traversal errors when internal document state is invalid.
     public func deleteRow(id: String) throws -> Bool {
         guard let li = findLI(id: id) else { return false }
         li.detach()
         return true
     }
 
+    /// Replaces paragraph content for an existing row with sanitized rich text.
+    /// - Parameters:
+    ///   - id: Target row id.
+    ///   - richText: Inline XML fragment for the paragraph body.
+    /// - Returns: `true` when the row exists and was updated; otherwise `false`.
+    /// - Throws: ``BikeToolCoreError`` for malformed/unsupported rich text.
     public func setRichText(id: String, richText: String) throws -> Bool {
         guard let li = findLI(id: id) else { return false }
         let p = upsertParagraph(in: li)
@@ -174,6 +222,13 @@ public final class BikeDocument {
         return true
     }
 
+    /// Serializes and writes the current in-memory document to disk.
+    ///
+    /// Backup handling runs first according to `backupMode`.
+    /// - Parameters:
+    ///   - writeMode: File write strategy.
+    ///   - backupMode: Backup strategy applied before write.
+    /// - Throws: ``BikeToolCoreError`` or Foundation file coordination/write errors.
     public func saveWithBackup(writeMode: WriteMode = .coordinated, backupMode: BackupMode = .managed) throws {
         let outData = try serializedXML()
         switch writeMode {
@@ -532,4 +587,3 @@ public final class BikeDocument {
         return paragraph
     }
 }
-

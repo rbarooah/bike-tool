@@ -1,18 +1,27 @@
 import Foundation
 
+/// Metadata describing a stored managed backup file.
 public struct BackupEntry {
+    /// Backup file identifier (filename).
     public let id: String
+    /// Full backup file URL.
     public let url: URL
+    /// Backup creation/modification timestamp used for ordering/pruning.
     public let createdDate: Date
+    /// Backup file size in bytes.
     public let sizeBytes: Int64
 
+    /// Human-readable local timestamp for display.
     public var createdAt: String {
         BackupManager.humanDateFormatter.string(from: createdDate)
     }
 }
 
+/// Managed backup storage and lifecycle utilities for `.bike` files.
 public enum BackupManager {
+    /// Default number of recent backups retained per source file.
     public static let defaultKeepCount = 10
+    /// Default maximum backup age in days.
     public static let defaultMaxAgeDays = 30
 
     static let humanDateFormatter: DateFormatter = {
@@ -31,6 +40,10 @@ public enum BackupManager {
         return formatter
     }()
 
+    /// Creates a managed backup for a source file and applies default pruning.
+    /// - Parameter sourceURL: URL of the source `.bike` file.
+    /// - Returns: URL of the newly created backup.
+    /// - Throws: ``BikeToolCoreError`` when source file is missing or copy/prune operations fail.
     public static func createManagedBackup(for sourceURL: URL) throws -> URL {
         guard FileManager.default.fileExists(atPath: sourceURL.path) else {
             throw BikeToolCoreError(message: "Cannot create backup. Source file not found: \(sourceURL.path)")
@@ -53,6 +66,10 @@ public enum BackupManager {
         return backupURL
     }
 
+    /// Lists managed backups for a source file, newest first.
+    /// - Parameter sourceURL: URL of the source `.bike` file.
+    /// - Returns: Backup metadata entries sorted by creation date descending.
+    /// - Throws: File-system errors when backup directory contents cannot be read.
     public static func listBackups(for sourceURL: URL) throws -> [BackupEntry] {
         let sourceDirectory = sourceBackupsDirectory(for: sourceURL)
         guard FileManager.default.fileExists(atPath: sourceDirectory.path) else {
@@ -61,6 +78,13 @@ public enum BackupManager {
         return try loadBackupEntries(in: sourceDirectory)
     }
 
+    /// Prunes managed backups for one source file by count and age policy.
+    /// - Parameters:
+    ///   - sourceURL: URL of the source `.bike` file.
+    ///   - keep: Maximum number of newest backups to retain.
+    ///   - maxAgeDays: Maximum backup age in days.
+    /// - Returns: Number of removed backup files.
+    /// - Throws: File-system errors when pruning fails.
     public static func pruneBackups(for sourceURL: URL, keep: Int, maxAgeDays: Int) throws -> Int {
         let sourceDirectory = sourceBackupsDirectory(for: sourceURL)
         guard FileManager.default.fileExists(atPath: sourceDirectory.path) else {
@@ -72,6 +96,12 @@ public enum BackupManager {
         return removed
     }
 
+    /// Prunes all managed backup directories under the backup root.
+    /// - Parameters:
+    ///   - keep: Maximum number of newest backups to retain per source file.
+    ///   - maxAgeDays: Maximum backup age in days.
+    /// - Returns: Total number of removed backup files.
+    /// - Throws: File-system errors when traversal or deletion fails.
     public static func pruneAllBackups(keep: Int, maxAgeDays: Int) throws -> Int {
         let root = backupRootDirectory()
         guard FileManager.default.fileExists(atPath: root.path) else {
@@ -94,6 +124,14 @@ public enum BackupManager {
         return removed
     }
 
+    /// Restores a managed backup to a source file.
+    ///
+    /// If the source file exists, this method creates a fresh managed backup before restoring.
+    /// - Parameters:
+    ///   - sourceURL: URL of the source `.bike` file to restore.
+    ///   - backupID: Backup identifier returned by ``listBackups(for:)``.
+    ///   - writeMode: Write strategy used for restore.
+    /// - Throws: ``BikeToolCoreError`` if `backupID` is not found, plus file coordination/write errors.
     public static func restoreBackup(for sourceURL: URL, backupID: String, writeMode: WriteMode) throws {
         let backupEntries = try listBackups(for: sourceURL)
         guard let backup = backupEntries.first(where: { $0.id == backupID }) else {
@@ -138,6 +176,12 @@ public enum BackupManager {
         }
     }
 
+    /// Returns the root directory where managed backups are stored.
+    ///
+    /// Resolution order:
+    /// 1. `BIKETOOL_BACKUP_DIR` when set
+    /// 2. `$CODEX_HOME/state/bike-tool/backups`
+    /// 3. `~/.codex/state/bike-tool/backups`
     public static func backupRootDirectory() -> URL {
         if let explicit = ProcessInfo.processInfo.environment["BIKETOOL_BACKUP_DIR"], !explicit.isEmpty {
             return URL(fileURLWithPath: explicit, isDirectory: true).standardizedFileURL
@@ -159,6 +203,11 @@ public enum BackupManager {
             .standardizedFileURL
     }
 
+    /// Returns the managed backup directory for a source file.
+    ///
+    /// The source path is normalized and encoded to provide a stable directory name.
+    /// - Parameter sourceURL: URL of the source `.bike` file.
+    /// - Returns: Per-source directory under ``backupRootDirectory()``.
     public static func sourceBackupsDirectory(for sourceURL: URL) -> URL {
         let canonicalPath = sourceURL.standardizedFileURL.path
         var encoded = Data(canonicalPath.utf8).base64EncodedString()
@@ -214,4 +263,3 @@ public enum BackupManager {
         }
     }
 }
-
