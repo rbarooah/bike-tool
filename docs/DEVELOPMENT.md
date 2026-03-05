@@ -81,6 +81,28 @@ cd /path/to/bike-tool
 scripts/install.sh
 ```
 
+## Documentation
+
+API reference is maintained inline with source comments in `Sources/BikeToolCore/*.swift`.
+
+DocC sources live in:
+
+- `Sources/BikeToolCore/BikeToolCore.docc/`
+
+Agent-focused integration guidance lives in:
+
+- [AGENT_INTEGRATION.md](AGENT_INTEGRATION.md)
+
+Validation commands:
+
+```bash
+# Validate symbol graph generation from source docs
+swift package dump-symbol-graph
+
+# Run behavior regression coverage
+swift test
+```
+
 ## Notes
 
 - Keep `.bike` paths absolute in examples and automation prompts.

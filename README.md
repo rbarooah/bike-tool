@@ -125,6 +125,11 @@ Core module APIs include:
 - `BackupManager` backup list/prune/restore helpers
 - `BikeToolCoreError`
 
+Documentation for library consumers:
+
+- DocC catalog: `Sources/BikeToolCore/BikeToolCore.docc/`
+- Agent integration quick guide: [docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md)
+
 ## Codex Skill
 
 This repo includes a companion skill at `skills/bike-outline/`.
@@ -207,6 +212,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 Row type semantics and planned/default behavior are defined in [docs/TYPE_POLICY.md](docs/TYPE_POLICY.md).
 Rich text write-command design and safety rules are defined in [docs/RICH_TEXT_EDITING.md](docs/RICH_TEXT_EDITING.md).
 Core library split plan (reusable module + CLI boundary) is defined in [docs/CORE_MODULE_SPLIT.md](docs/CORE_MODULE_SPLIT.md).
+BikeToolCore agent integration quick guide is defined in [docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md).
 
 ## Agent Instructions
 
