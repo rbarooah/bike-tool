@@ -13,20 +13,32 @@ public final class BikeDocument {
         "mark": [],
     ]
 
-    private let path: String
-    private let url: URL
-    private let doc: XMLDocument
+    private let url: URL?
+    private let document: BikeXMLDocument
 
     /// Loads and validates a Bike XML document from disk.
     /// - Parameter path: Absolute or relative file path to a `.bike` document.
     /// - Throws: ``BikeToolCoreError`` when the file is missing, or XML parsing/validation errors.
-    public init(path: String) throws {
-        self.path = path
-        self.url = URL(fileURLWithPath: path)
+    public convenience init(path: String) throws {
+        let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
             throw BikeToolCoreError(message: "File not found: \(path)")
         }
-        self.doc = try XMLDocument(contentsOf: url, options: [.nodePreserveAll, .documentValidate])
+        let data = try Data(contentsOf: url)
+        try self.init(data: data, sourceURL: url)
+    }
+
+    /// Loads and validates a Bike XML document from in-memory data.
+    /// - Parameter data: UTF-8 XML data for a `.bike` document.
+    /// - Throws: ``BikeToolCoreError`` when parsing or validation fails.
+    public convenience init(data: Data) throws {
+        try self.init(data: data, sourceURL: nil)
+    }
+
+    private init(data: Data, sourceURL: URL?) throws {
+        self.url = sourceURL
+        self.document = try BikeXMLDocument(data: data)
+        _ = try topUL()
     }
 
     /// Reads top-level outline rows from the document.
@@ -46,8 +58,8 @@ public final class BikeDocument {
     /// - Returns: The generated row id.
     /// - Throws: ``BikeToolCoreError`` for invalid placement or missing parent/target rows.
     public func addRow(text: String, type: String, parentID: String?, placement: AddPlacement = .atEnd) throws -> String {
-        let p = XMLElement(name: "p")
-        p.stringValue = text
+        let p = BikeXMLElement(name: "p")
+        p.addChild(BikeXMLNode(text: text))
         return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
     }
 
@@ -67,11 +79,11 @@ public final class BikeDocument {
         }
 
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let p = XMLElement(name: "p")
-        let a = XMLElement(name: "a")
-        a.addAttribute(XMLNode.attribute(withName: "href", stringValue: normalizedHref) as! XMLNode)
-        a.stringValue = normalizedText.isEmpty ? normalizedHref : normalizedText
-        p.addChild(a)
+        let p = BikeXMLElement(name: "p")
+        let a = BikeXMLElement(name: "a")
+        a.setAttribute(name: "href", value: normalizedHref)
+        a.addChild(BikeXMLNode(text: normalizedText.isEmpty ? normalizedHref : normalizedText))
+        p.addChild(BikeXMLNode(element: a))
         return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
     }
 
@@ -88,19 +100,19 @@ public final class BikeDocument {
         return try addRow(type: type, paragraph: p, parentID: parentID, placement: placement)
     }
 
-    private func addRow(type: String, paragraph: XMLElement, parentID: String?, placement: AddPlacement) throws -> String {
+    private func addRow(type: String, paragraph: BikeXMLElement, parentID: String?, placement: AddPlacement) throws -> String {
         let normalizedType = Self.normalizeStoredType(type)
         guard !normalizedType.isEmpty else {
             throw BikeToolCoreError(message: "Row type must not be empty.")
         }
 
-        let li = XMLElement(name: "li")
+        let li = BikeXMLElement(name: "li")
         let id = try generateUniqueID()
-        li.addAttribute(XMLNode.attribute(withName: "id", stringValue: id) as! XMLNode)
+        li.setAttribute(name: "id", value: id)
         if normalizedType != "item" {
-            li.addAttribute(XMLNode.attribute(withName: "data-type", stringValue: normalizedType) as! XMLNode)
+            li.setAttribute(name: "data-type", value: normalizedType)
         }
-        li.addChild(paragraph)
+        li.addChild(BikeXMLNode(element: paragraph))
 
         switch placement {
         case .atEnd:
@@ -109,15 +121,15 @@ public final class BikeDocument {
                     throw BikeToolCoreError(message: "Parent id not found: \(parentID)")
                 }
                 if let childUL = firstChildElement(named: "ul", in: parent) {
-                    childUL.addChild(li)
+                    childUL.addChild(BikeXMLNode(element: li))
                 } else {
-                    let newUL = XMLElement(name: "ul")
-                    newUL.addChild(li)
-                    parent.addChild(newUL)
+                    let newUL = BikeXMLElement(name: "ul")
+                    newUL.addChild(BikeXMLNode(element: li))
+                    parent.addChild(BikeXMLNode(element: newUL))
                 }
             } else {
                 let rootUL = try topUL()
-                rootUL.addChild(li)
+                rootUL.addChild(BikeXMLNode(element: li))
             }
         case .atStart:
             if let parentID {
@@ -126,22 +138,22 @@ public final class BikeDocument {
                 }
                 if let childUL = firstChildElement(named: "ul", in: parent) {
                     let startIndex = firstListItemIndex(in: childUL)
-                    childUL.insertChild(li, at: startIndex)
+                    childUL.insertChild(BikeXMLNode(element: li), at: startIndex)
                 } else {
-                    let newUL = XMLElement(name: "ul")
-                    newUL.addChild(li)
-                    parent.addChild(newUL)
+                    let newUL = BikeXMLElement(name: "ul")
+                    newUL.addChild(BikeXMLNode(element: li))
+                    parent.addChild(BikeXMLNode(element: newUL))
                 }
             } else {
                 let rootUL = try topUL()
                 let startIndex = firstListItemIndex(in: rootUL)
-                rootUL.insertChild(li, at: startIndex)
+                rootUL.insertChild(BikeXMLNode(element: li), at: startIndex)
             }
         case .before(let targetID), .after(let targetID):
             guard let target = findLI(id: targetID) else {
                 throw BikeToolCoreError(message: "Target id not found: \(targetID)")
             }
-            guard let siblingsUL = target.parent as? XMLElement, siblingsUL.name == "ul" else {
+            guard let siblingsUL = target.parent, siblingsUL.isNamed("ul") else {
                 throw BikeToolCoreError(message: "Invalid Bike structure near target id=\(targetID).")
             }
 
@@ -168,7 +180,7 @@ public final class BikeDocument {
             default:
                 insertionIndex = targetIndex
             }
-            siblingsUL.insertChild(li, at: insertionIndex)
+            siblingsUL.insertChild(BikeXMLNode(element: li), at: insertionIndex)
         }
         return id
     }
@@ -184,7 +196,7 @@ public final class BikeDocument {
         if markDone {
             li.removeAttribute(forName: "data-done")
             let doneValue = Self.iso8601Now()
-            li.addAttribute(XMLNode.attribute(withName: "data-done", stringValue: doneValue) as! XMLNode)
+            li.setAttribute(name: "data-done", value: doneValue)
         } else {
             li.removeAttribute(forName: "data-done")
         }
@@ -212,7 +224,7 @@ public final class BikeDocument {
         let p = upsertParagraph(in: li)
         let newChildren = try parseRichTextFragment(richText)
 
-        let existingChildren = p.children ?? []
+        let existingChildren = p.children
         for child in existingChildren {
             child.detach()
         }
@@ -230,7 +242,10 @@ public final class BikeDocument {
     ///   - backupMode: Backup strategy applied before write.
     /// - Throws: ``BikeToolCoreError`` or Foundation file coordination/write errors.
     public func saveWithBackup(writeMode: WriteMode = .coordinated, backupMode: BackupMode = .managed) throws {
-        let outData = try serializedXML()
+        guard url != nil else {
+            throw BikeToolCoreError(message: "Cannot save document loaded from data without a source URL.")
+        }
+        let outData = try serializedData()
         switch writeMode {
         case .coordinated:
             try writeCoordinated(outData, backupMode: backupMode)
@@ -241,29 +256,17 @@ public final class BikeDocument {
         }
     }
 
-    private func serializedXML() throws -> Data {
-        doc.characterEncoding = "UTF-8"
-        doc.version = "1.0"
-        // Avoid pretty-print rewriting inside inline-rich <p> content. Pretty print introduces
-        // indentation/newline text nodes around mixed inline elements (for example <strong> + text).
-        let xmlData = doc.xmlData(options: [.nodeCompactEmptyElement])
-        guard var xml = String(data: xmlData, encoding: .utf8) else {
-            throw BikeToolCoreError(message: "Unable to serialize XML as UTF-8.")
-        }
-
-        if !xml.hasPrefix("<?xml") {
-            xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + xml
-        }
-        // XMLDocument may emit <meta ...> in HTML style; normalize for strict XML parsing.
-        xml = xml.replacingOccurrences(of: "<meta charset=\"utf-8\">", with: "<meta charset=\"utf-8\"/>")
-
-        guard let outData = xml.data(using: .utf8) else {
-            throw BikeToolCoreError(message: "Unable to encode XML output as UTF-8.")
-        }
-        return outData
+    /// Serializes the current in-memory document as UTF-8 XML data.
+    /// - Returns: XML data suitable for writing as a `.bike` document.
+    /// - Throws: ``BikeToolCoreError`` when serialization fails.
+    public func serializedData() throws -> Data {
+        try document.serializedData()
     }
 
     private func writeNonCoordinated(_ data: Data, atomic: Bool, backupMode: BackupMode) throws {
+        guard let url else {
+            throw BikeToolCoreError(message: "Cannot save document loaded from data without a source URL.")
+        }
         try writeBackup(for: url, mode: backupMode)
         if atomic {
             try data.write(to: url, options: .atomic)
@@ -273,13 +276,16 @@ public final class BikeDocument {
     }
 
     private func writeCoordinated(_ data: Data, backupMode: BackupMode) throws {
+        guard let url else {
+            throw BikeToolCoreError(message: "Cannot save document loaded from data without a source URL.")
+        }
+        try writeBackup(for: url, mode: backupMode)
         let coordinator = NSFileCoordinator(filePresenter: nil)
         var coordinatorError: NSError?
         var writeError: Error?
 
         coordinator.coordinate(writingItemAt: url, options: .forReplacing, error: &coordinatorError) { coordinatedURL in
             do {
-                try writeBackup(for: coordinatedURL, mode: backupMode)
                 try data.write(to: coordinatedURL, options: .atomic)
             } catch {
                 writeError = error
@@ -309,28 +315,28 @@ public final class BikeDocument {
         }
     }
 
-    private func topUL() throws -> XMLElement {
-        guard
-            let body = try doc.nodes(forXPath: "/html/body").first as? XMLElement,
-            let rootUL = firstChildElement(named: "ul", in: body)
+    private func topUL() throws -> BikeXMLElement {
+        guard let html = document.root.isNamed("html") ? document.root : nil,
+              let body = firstChildElement(named: "body", in: html),
+              let rootUL = firstChildElement(named: "ul", in: body)
         else {
             throw BikeToolCoreError(message: "Invalid Bike structure. Expected /html/body/ul.")
         }
         return rootUL
     }
 
-    private func parseRows(in ul: XMLElement) -> [Row] {
-        let lis = ul.children?.compactMap { $0 as? XMLElement }.filter { $0.name == "li" } ?? []
+    private func parseRows(in ul: BikeXMLElement) -> [Row] {
+        let lis = ul.children.compactMap(\.element).filter { $0.isNamed("li") }
         return lis.map { parseRow(from: $0) }
     }
 
-    private func parseRow(from li: XMLElement) -> Row {
+    private func parseRow(from li: BikeXMLElement) -> Row {
         let attrs = allAttributes(from: li)
         let id = attrs["id"] ?? ""
         let type = attrs["data-type"]
         let done = attrs["data-done"]
         let p = firstChildElement(named: "p", in: li)
-        let text = p?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let text = p?.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let richText = p.map(innerXML(of:)) ?? ""
         let links = p.map(extractLinks(from:)) ?? []
 
@@ -350,17 +356,12 @@ public final class BikeDocument {
         )
     }
 
-    private func findLI(id: String) -> XMLElement? {
-        let escaped = id.replacingOccurrences(of: "'", with: "&apos;")
-        let xpath = "//li[@id='\(escaped)']"
-        return try? doc.nodes(forXPath: xpath).first as? XMLElement
+    private func findLI(id: String) -> BikeXMLElement? {
+        document.elements(named: "li").first { $0.attribute(forName: "id") == id }
     }
 
-    private func firstChildElement(named: String, in element: XMLElement) -> XMLElement? {
-        element.children?.first { node in
-            guard let el = node as? XMLElement else { return false }
-            return el.name == named
-        } as? XMLElement
+    private func firstChildElement(named: String, in element: BikeXMLElement) -> BikeXMLElement? {
+        element.firstChildElement(named: named)
     }
 
     private func generateID() -> String {
@@ -368,21 +369,19 @@ public final class BikeDocument {
         return String((0..<6).map { _ in chars.randomElement()! })
     }
 
-    private func firstListItemIndex(in ul: XMLElement) -> Int {
-        guard let children = ul.children else { return 0 }
-        for (index, child) in children.enumerated() {
-            guard let childElement = child as? XMLElement else { continue }
-            if childElement.name == "li" {
+    private func firstListItemIndex(in ul: BikeXMLElement) -> Int {
+        for (index, child) in ul.children.enumerated() {
+            guard let childElement = child.element else { continue }
+            if childElement.isNamed("li") {
                 return index
             }
         }
-        return children.count
+        return ul.children.count
     }
 
-    private func listItemIndex(of target: XMLElement, in ul: XMLElement) -> Int? {
-        guard let children = ul.children else { return nil }
-        for (index, child) in children.enumerated() {
-            guard let childElement = child as? XMLElement else { continue }
+    private func listItemIndex(of target: BikeXMLElement, in ul: BikeXMLElement) -> Int? {
+        for (index, child) in ul.children.enumerated() {
+            guard let childElement = child.element else { continue }
             if childElement === target {
                 return index
             }
@@ -390,15 +389,15 @@ public final class BikeDocument {
         return nil
     }
 
-    private func inferredParentRowID(forSiblingsUL ul: XMLElement) throws -> String? {
+    private func inferredParentRowID(forSiblingsUL ul: BikeXMLElement) throws -> String? {
         let rootUL = try topUL()
         if ul === rootUL {
             return nil
         }
-        guard let parentLI = ul.parent as? XMLElement, parentLI.name == "li" else {
+        guard let parentLI = ul.parent, parentLI.isNamed("li") else {
             throw BikeToolCoreError(message: "Invalid Bike structure. Expected nested rows under li/ul.")
         }
-        guard let parentID = parentLI.attribute(forName: "id")?.stringValue, !parentID.isEmpty else {
+        guard let parentID = parentLI.attribute(forName: "id"), !parentID.isEmpty else {
             throw BikeToolCoreError(message: "Invalid Bike structure. Parent row is missing id.")
         }
         return parentID
@@ -414,23 +413,16 @@ public final class BikeDocument {
         throw BikeToolCoreError(message: "Unable to generate unique id after \(maxAttempts) attempts.")
     }
 
-    private func allAttributes(from element: XMLElement) -> [String: String] {
-        let attrs = element.attributes ?? []
-        var out: [String: String] = [:]
-        for attr in attrs {
-            guard let name = attr.name else { continue }
-            out[name] = attr.stringValue ?? ""
-        }
-        return out
+    private func allAttributes(from element: BikeXMLElement) -> [String: String] {
+        element.attributes
     }
 
-    private func innerXML(of element: XMLElement) -> String {
-        let children = element.children ?? []
-        return children.map { $0.xmlString(options: []) }.joined()
+    private func innerXML(of element: BikeXMLElement) -> String {
+        element.children.map { $0.xmlString() }.joined()
     }
 
-    private func paragraphFromRichText(_ richText: String) throws -> XMLElement {
-        let p = XMLElement(name: "p")
+    private func paragraphFromRichText(_ richText: String) throws -> BikeXMLElement {
+        let p = BikeXMLElement(name: "p")
         let richChildren = try parseRichTextFragment(richText)
         for child in richChildren {
             p.addChild(child)
@@ -438,48 +430,42 @@ public final class BikeDocument {
         return p
     }
 
-    private func parseRichTextFragment(_ fragment: String) throws -> [XMLNode] {
+    private func parseRichTextFragment(_ fragment: String) throws -> [BikeXMLNode] {
         if fragment.isEmpty {
             return []
         }
 
         // Plain text input with no tag delimiters should be accepted directly.
         if !fragment.contains("<"), !fragment.contains(">") {
-            return [XMLNode.text(withStringValue: fragment) as! XMLNode]
+            return [BikeXMLNode(text: fragment)]
         }
 
         let wrapped = "<root>\(fragment)</root>"
-        let parsedDoc: XMLDocument
+        let parsedDocument: BikeXMLDocument
         do {
-            parsedDoc = try XMLDocument(xmlString: wrapped, options: [.nodePreserveAll])
+            guard let data = wrapped.data(using: .utf8) else {
+                throw BikeToolCoreError(message: "Invalid --rich-text fragment: unable to encode XML.")
+            }
+            parsedDocument = try BikeXMLDocument(data: data)
         } catch {
             throw BikeToolCoreError(message: "Invalid --rich-text fragment: not well-formed XML.")
         }
 
-        guard let root = parsedDoc.rootElement() else {
-            throw BikeToolCoreError(message: "Invalid --rich-text fragment: unable to parse root container.")
-        }
-
-        let children = root.children ?? []
-        return try children.map { try sanitizeInlineNode($0) }
+        return try parsedDocument.root.children.map { try sanitizeInlineNode($0) }
     }
 
-    private func sanitizeInlineNode(_ node: XMLNode) throws -> XMLNode {
-        switch node.kind {
-        case .text:
-            return XMLNode.text(withStringValue: node.stringValue ?? "") as! XMLNode
-        case .element:
-            guard let element = node as? XMLElement else {
-                throw BikeToolCoreError(message: "Invalid --rich-text fragment: malformed element node.")
-            }
-            return try sanitizeInlineElement(element)
-        default:
-            throw BikeToolCoreError(message: "Invalid --rich-text fragment: unsupported node kind in paragraph content.")
+    private func sanitizeInlineNode(_ node: BikeXMLNode) throws -> BikeXMLNode {
+        switch node.storage {
+        case .text(let text):
+            return BikeXMLNode(text: text)
+        case .element(let element):
+            return BikeXMLNode(element: try sanitizeInlineElement(element))
         }
     }
 
-    private func sanitizeInlineElement(_ element: XMLElement) throws -> XMLElement {
-        guard let rawName = element.name, !rawName.isEmpty else {
+    private func sanitizeInlineElement(_ element: BikeXMLElement) throws -> BikeXMLElement {
+        let rawName = element.name
+        guard !rawName.isEmpty else {
             throw BikeToolCoreError(message: "Invalid --rich-text fragment: encountered unnamed element.")
         }
 
@@ -489,27 +475,26 @@ public final class BikeDocument {
         }
 
         let allowedAttributes = Self.allowedInlineAttributesByTag[canonicalName] ?? []
-        let copied = XMLElement(name: rawName)
-        for attribute in element.attributes ?? [] {
-            guard let attributeName = attribute.name, !attributeName.isEmpty else { continue }
+        let copied = BikeXMLElement(name: rawName)
+        for attributeName in element.attributeNames {
+            guard let attributeValue = element.attribute(forName: attributeName), !attributeName.isEmpty else { continue }
             let canonicalAttributeName = canonicalInlineName(from: attributeName)
             guard allowedAttributes.contains(canonicalAttributeName) else {
                 throw BikeToolCoreError(message: "Invalid --rich-text fragment: attribute '\(attributeName)' is not allowed on <\(rawName)>.")
             }
-            let attributeValue = attribute.stringValue ?? ""
             if canonicalName == "a", canonicalAttributeName == "href",
                attributeValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             {
                 throw BikeToolCoreError(message: "Invalid --rich-text fragment: <a> requires non-empty href.")
             }
-            copied.addAttribute(XMLNode.attribute(withName: attributeName, stringValue: attributeValue) as! XMLNode)
+            copied.setAttribute(name: attributeName, value: attributeValue)
         }
 
         if canonicalName == "a", copied.attribute(forName: "href") == nil {
             throw BikeToolCoreError(message: "Invalid --rich-text fragment: <a> requires href attribute.")
         }
 
-        for child in element.children ?? [] {
+        for child in element.children {
             copied.addChild(try sanitizeInlineNode(child))
         }
         return copied
@@ -519,24 +504,24 @@ public final class BikeDocument {
         rawName.split(separator: ":").last.map(String.init) ?? rawName
     }
 
-    private func extractLinks(from paragraph: XMLElement) -> [RowLink] {
+    private func extractLinks(from paragraph: BikeXMLElement) -> [RowLink] {
         collectAnchorElements(in: paragraph).compactMap { anchor in
-            guard let href = anchor.attribute(forName: "href")?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+            guard let href = anchor.attribute(forName: "href")?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !href.isEmpty
             else {
                 return nil
             }
-            let text = anchor.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? href
-            let title = anchor.attribute(forName: "title")?.stringValue
-            let rel = anchor.attribute(forName: "rel")?.stringValue
+            let text = anchor.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            let title = anchor.attribute(forName: "title")
+            let rel = anchor.attribute(forName: "rel")
             return RowLink(href: href, text: text, title: title, rel: rel)
         }
     }
 
-    private func collectAnchorElements(in element: XMLElement) -> [XMLElement] {
-        var anchors: [XMLElement] = []
-        for child in element.children ?? [] {
-            guard let childElement = child as? XMLElement else { continue }
+    private func collectAnchorElements(in element: BikeXMLElement) -> [BikeXMLElement] {
+        var anchors: [BikeXMLElement] = []
+        for child in element.children {
+            guard let childElement = child.element else { continue }
             if isElement(childElement, named: "a") {
                 anchors.append(childElement)
             }
@@ -545,12 +530,8 @@ public final class BikeDocument {
         return anchors
     }
 
-    private func isElement(_ element: XMLElement, named expectedName: String) -> Bool {
-        if let localName = element.localName {
-            return localName == expectedName
-        }
-        guard let name = element.name else { return false }
-        return name == expectedName || name.split(separator: ":").last == Substring(expectedName)
+    private func isElement(_ element: BikeXMLElement, named expectedName: String) -> Bool {
+        element.isNamed(expectedName)
     }
 
     private static func iso8601Now() -> String {
@@ -572,17 +553,16 @@ public final class BikeDocument {
         return trimmed
     }
 
-    private func upsertParagraph(in li: XMLElement) -> XMLElement {
+    private func upsertParagraph(in li: BikeXMLElement) -> BikeXMLElement {
         if let existing = firstChildElement(named: "p", in: li) {
             return existing
         }
 
-        let paragraph = XMLElement(name: "p")
-        let children = li.children ?? []
-        if children.isEmpty {
-            li.addChild(paragraph)
+        let paragraph = BikeXMLElement(name: "p")
+        if li.children.isEmpty {
+            li.addChild(BikeXMLNode(element: paragraph))
         } else {
-            li.insertChild(paragraph, at: 0)
+            li.insertChild(BikeXMLNode(element: paragraph), at: 0)
         }
         return paragraph
     }

@@ -57,6 +57,13 @@ public enum BackupManager {
         let backupURL = sourceDirectory.appendingPathComponent(backupFileName)
 
         try FileManager.default.copyItem(at: sourceURL, to: backupURL)
+        try? FileManager.default.setAttributes(
+            [
+                .creationDate: Date(),
+                .modificationDate: Date()
+            ],
+            ofItemAtPath: backupURL.path
+        )
 
         do {
             _ = try pruneBackups(for: sourceURL, keep: defaultKeepCount, maxAgeDays: defaultMaxAgeDays)
@@ -209,7 +216,10 @@ public enum BackupManager {
     /// - Parameter sourceURL: URL of the source `.bike` file.
     /// - Returns: Per-source directory under ``backupRootDirectory()``.
     public static func sourceBackupsDirectory(for sourceURL: URL) -> URL {
-        let canonicalPath = sourceURL.standardizedFileURL.path
+        let canonicalPath = sourceURL
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+            .path
         var encoded = Data(canonicalPath.utf8).base64EncodedString()
         encoded = encoded
             .replacingOccurrences(of: "+", with: "-")

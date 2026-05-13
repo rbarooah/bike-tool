@@ -109,6 +109,71 @@ final class BikeToolCoreTests: XCTestCase {
         }
     }
 
+    func testDataInitializerAndSerializationRoundTripPreservesBikeMarkup() throws {
+        let source = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <html xmlns="http://www.w3.org/1999/xhtml">
+          <head>
+            <meta charset="utf-8"/>
+          </head>
+          <body>
+            <ul>
+              <li id="root" data-type="task" indent="2" data-extra="keep">
+                <p><strong>Root</strong> &amp; <em>child</em></p>
+                <ul>
+                  <li id="child" data-type="note" data-done="2026-01-01T00:00:00Z">
+                    <p/>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </body>
+        </html>
+        """
+        let bike = try BikeDocument(data: Data(source.utf8))
+        let rows = try bike.readRows()
+        let root = try XCTUnwrap(rows.first)
+
+        XCTAssertEqual(root.id, "root")
+        XCTAssertEqual(root.attributes["indent"], "2")
+        XCTAssertEqual(root.attributes["data-extra"], "keep")
+        XCTAssertEqual(root.children.first?.done, "2026-01-01T00:00:00Z")
+        XCTAssertEqual(root.children.first?.richText, "")
+
+        let output = try XCTUnwrap(String(data: bike.serializedData(), encoding: .utf8))
+        XCTAssertTrue(output.hasPrefix("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"))
+        XCTAssertTrue(output.contains("xmlns=\"http://www.w3.org/1999/xhtml\""))
+        XCTAssertTrue(output.contains("<meta charset=\"utf-8\"/>"))
+        XCTAssertTrue(output.contains("<p/>"))
+        XCTAssertTrue(output.contains("<strong>Root</strong> &amp; <em>child</em>"))
+    }
+
+    func testSetRichTextInsertsParagraphWhenMissing() throws {
+        let source = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <html xmlns="http://www.w3.org/1999/xhtml">
+          <head><meta charset="utf-8"/></head>
+          <body>
+            <ul>
+              <li id="root" data-type="note">
+                <ul>
+                  <li id="child"><p>Child</p></li>
+                </ul>
+              </li>
+            </ul>
+          </body>
+        </html>
+        """
+        let bike = try BikeDocument(data: Data(source.utf8))
+        XCTAssertTrue(try bike.setRichText(id: "root", richText: "Inserted <mark>paragraph</mark>"))
+
+        let rows = try bike.readRows()
+        let root = try XCTUnwrap(rows.first)
+        XCTAssertEqual(root.text, "Inserted paragraph")
+        XCTAssertTrue(root.richText.contains("<mark>paragraph</mark>"))
+        XCTAssertEqual(root.children.map(\.id), ["child"])
+    }
+
     private func writeBaseBike() throws -> URL {
         try writeTempBike(contents: """
         <?xml version="1.0" encoding="UTF-8"?>
