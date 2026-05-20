@@ -174,6 +174,65 @@ final class BikeToolCoreTests: XCTestCase {
         XCTAssertEqual(root.children.map(\.id), ["child"])
     }
 
+    func testReorderRootRowsPreservesSubtreesAndMetadata() throws {
+        let tempURL = try writeReorderBike()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let bike = try BikeDocument(path: tempURL.path)
+        try bike.reorderChildren(parentID: nil, orderedChildIDs: ["third", "first", "second"])
+        try bike.saveWithBackup(backupMode: .none)
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        XCTAssertEqual(rows.map(\.id), ["third", "first", "second"])
+
+        let first = try XCTUnwrap(rows.first(where: { $0.id == "first" }))
+        XCTAssertEqual(first.attributes["indent"], "1")
+        XCTAssertTrue(first.richText.contains("<strong>First</strong>"))
+        XCTAssertEqual(first.children.map(\.id), ["first-child"])
+        XCTAssertEqual(first.children.first?.done, "2026-01-01T00:00:00Z")
+    }
+
+    func testReorderNestedChildrenKeepsParentAndSiblingOrder() throws {
+        let tempURL = try writeReorderBike()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let bike = try BikeDocument(path: tempURL.path)
+        try bike.reorderChildren(parentID: "second", orderedChildIDs: ["second-child-b", "second-child-a"])
+        try bike.saveWithBackup(backupMode: .none)
+
+        let rows = try BikeDocument(path: tempURL.path).readRows()
+        XCTAssertEqual(rows.map(\.id), ["first", "second", "third"])
+
+        let second = try XCTUnwrap(rows.first(where: { $0.id == "second" }))
+        XCTAssertEqual(second.children.map(\.id), ["second-child-b", "second-child-a"])
+        XCTAssertEqual(second.children.first?.children.map(\.id), ["second-grandchild"])
+    }
+
+    func testReorderChildrenRejectsInvalidChildSets() throws {
+        let tempURL = try writeReorderBike()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let duplicateDocument = try BikeDocument(path: tempURL.path)
+        XCTAssertThrowsError(
+            try duplicateDocument.reorderChildren(parentID: nil, orderedChildIDs: ["first", "first", "third"])
+        )
+
+        let incompleteDocument = try BikeDocument(path: tempURL.path)
+        XCTAssertThrowsError(
+            try incompleteDocument.reorderChildren(parentID: nil, orderedChildIDs: ["first", "third"])
+        )
+
+        let nonDirectDocument = try BikeDocument(path: tempURL.path)
+        XCTAssertThrowsError(
+            try nonDirectDocument.reorderChildren(parentID: nil, orderedChildIDs: ["first", "second", "first-child"])
+        )
+
+        let unknownDocument = try BikeDocument(path: tempURL.path)
+        XCTAssertThrowsError(
+            try unknownDocument.reorderChildren(parentID: "second", orderedChildIDs: ["second-child-a", "missing"])
+        )
+    }
+
     private func writeBaseBike() throws -> URL {
         try writeTempBike(contents: """
         <?xml version="1.0" encoding="UTF-8"?>
@@ -190,6 +249,48 @@ final class BikeToolCoreTests: XCTestCase {
                     <p>Child</p>
                   </li>
                 </ul>
+              </li>
+            </ul>
+          </body>
+        </html>
+        """)
+    }
+
+    private func writeReorderBike() throws -> URL {
+        try writeTempBike(contents: """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <html xmlns="http://www.w3.org/1999/xhtml">
+          <head>
+            <meta charset="utf-8"/>
+          </head>
+          <body>
+            <ul>
+              <li id="first" data-type="task" indent="1">
+                <p><strong>First</strong></p>
+                <ul>
+                  <li id="first-child" data-type="note" data-done="2026-01-01T00:00:00Z">
+                    <p>First child</p>
+                  </li>
+                </ul>
+              </li>
+              <li id="second">
+                <p>Second</p>
+                <ul>
+                  <li id="second-child-a">
+                    <p>Second child A</p>
+                  </li>
+                  <li id="second-child-b">
+                    <p>Second child B</p>
+                    <ul>
+                      <li id="second-grandchild">
+                        <p>Second grandchild</p>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li id="third" data-extra="keep">
+                <p><em>Third</em></p>
               </li>
             </ul>
           </body>

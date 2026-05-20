@@ -213,6 +213,47 @@ public final class BikeDocument {
         return true
     }
 
+    /// Reorders the direct children of a list while preserving each row subtree and metadata.
+    ///
+    /// Pass `nil` for `parentID` to reorder the document's top-level rows. The ordered
+    /// identifiers must contain every existing direct child id exactly once and must not
+    /// include rows from another list.
+    /// - Parameters:
+    ///   - parentID: Parent row id whose child list should be reordered, or `nil` for root rows.
+    ///   - orderedChildIDs: Direct child row ids in their new outline order.
+    /// - Throws: ``BikeToolCoreError`` when the parent or child id set is invalid.
+    public func reorderChildren(parentID: String?, orderedChildIDs: [String]) throws {
+        let list = try childList(forParentID: parentID)
+        let directChildren = try directListItemNodes(in: list)
+        let directIDs = directChildren.map(\.id)
+
+        guard Set(orderedChildIDs).count == orderedChildIDs.count else {
+            throw BikeToolCoreError(message: "Cannot reorder children: ordered child ids contain duplicates.")
+        }
+
+        let directIDSet = Set(directIDs)
+        let orderedIDSet = Set(orderedChildIDs)
+        let missing = directIDs.filter { !orderedIDSet.contains($0) }
+        let extra = orderedChildIDs.filter { !directIDSet.contains($0) }
+
+        guard missing.isEmpty, extra.isEmpty else {
+            let missingMessage = missing.isEmpty ? nil : "missing direct child ids: \(missing.joined(separator: ", "))"
+            let extraMessage = extra.isEmpty ? nil : "non-direct or unknown child ids: \(extra.joined(separator: ", "))"
+            let details = [missingMessage, extraMessage].compactMap(\.self).joined(separator: "; ")
+            throw BikeToolCoreError(message: "Cannot reorder children: \(details).")
+        }
+
+        let nodesByID = Dictionary(uniqueKeysWithValues: directChildren.map { ($0.id, $0.node) })
+        var reorderedNodes = orderedChildIDs.compactMap { nodesByID[$0] }
+
+        list.children = list.children.map { child in
+            guard child.element?.isNamed("li") == true else {
+                return child
+            }
+            return reorderedNodes.removeFirst()
+        }
+    }
+
     /// Replaces paragraph content for an existing row with sanitized rich text.
     /// - Parameters:
     ///   - id: Target row id.
@@ -323,6 +364,31 @@ public final class BikeDocument {
             throw BikeToolCoreError(message: "Invalid Bike structure. Expected /html/body/ul.")
         }
         return rootUL
+    }
+
+    private func childList(forParentID parentID: String?) throws -> BikeXMLElement {
+        guard let parentID else {
+            return try topUL()
+        }
+        guard let parent = findLI(id: parentID) else {
+            throw BikeToolCoreError(message: "Parent id not found: \(parentID)")
+        }
+        guard let childUL = firstChildElement(named: "ul", in: parent) else {
+            throw BikeToolCoreError(message: "Parent row has no child list: \(parentID)")
+        }
+        return childUL
+    }
+
+    private func directListItemNodes(in ul: BikeXMLElement) throws -> [(id: String, node: BikeXMLNode)] {
+        try ul.children.compactMap { child -> (id: String, node: BikeXMLNode)? in
+            guard let childElement = child.element, childElement.isNamed("li") else {
+                return nil
+            }
+            guard let id = childElement.attribute(forName: "id"), !id.isEmpty else {
+                throw BikeToolCoreError(message: "Cannot reorder children: a direct child row is missing an id.")
+            }
+            return (id, child)
+        }
     }
 
     private func parseRows(in ul: BikeXMLElement) -> [Row] {
