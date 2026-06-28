@@ -243,15 +243,31 @@ public final class BikeDocument {
             throw BikeToolCoreError(message: "Cannot reorder children: \(details).")
         }
 
-        let nodesByID = Dictionary(uniqueKeysWithValues: directChildren.map { ($0.id, $0.node) })
-        var reorderedNodes = orderedChildIDs.compactMap { nodesByID[$0] }
-
-        list.children = list.children.map { child in
-            guard child.element?.isNamed("li") == true else {
-                return child
-            }
-            return reorderedNodes.removeFirst()
+        var nodesByID: [String: BikeXMLNode] = [:]
+        for directChild in directChildren {
+            nodesByID[directChild.id] = directChild.node
         }
+
+        var reorderedNodes: [BikeXMLNode] = []
+        reorderedNodes.reserveCapacity(orderedChildIDs.count)
+        for childID in orderedChildIDs {
+            if let node = nodesByID[childID] {
+                reorderedNodes.append(node)
+            }
+        }
+
+        var reorderedIndex = 0
+        var updatedChildren: [BikeXMLNode] = []
+        updatedChildren.reserveCapacity(list.children.count)
+        for child in list.children {
+            if child.element?.isNamed("li") == true {
+                updatedChildren.append(reorderedNodes[reorderedIndex])
+                reorderedIndex += 1
+            } else {
+                updatedChildren.append(child)
+            }
+        }
+        list.children = updatedChildren
     }
 
     /// Replaces paragraph content for an existing row with sanitized rich text.
@@ -380,15 +396,17 @@ public final class BikeDocument {
     }
 
     private func directListItemNodes(in ul: BikeXMLElement) throws -> [(id: String, node: BikeXMLNode)] {
-        try ul.children.compactMap { child -> (id: String, node: BikeXMLNode)? in
+        var items: [(id: String, node: BikeXMLNode)] = []
+        for child in ul.children {
             guard let childElement = child.element, childElement.isNamed("li") else {
-                return nil
+                continue
             }
             guard let id = childElement.attribute(forName: "id"), !id.isEmpty else {
                 throw BikeToolCoreError(message: "Cannot reorder children: a direct child row is missing an id.")
             }
-            return (id, child)
+            items.append((id: id, node: child))
         }
+        return items
     }
 
     private func parseRows(in ul: BikeXMLElement) -> [Row] {
